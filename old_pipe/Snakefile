@@ -1,0 +1,322 @@
+configfile: "config.yaml"
+
+names = config['name']
+samples = config['sample']
+samples_protein = config['sample_protein']
+dirs = config['path']
+
+rule all:
+    input:
+        expand("barcode/{name}_read1.with.barcodes.fastq.gz", name=names), 
+        expand("barcode/{name}_read2.with.barcodes.fastq.gz", name=names), 
+        expand("bam/{name}_aligned.bam", name=names), 
+        expand("bam/{name}_aligned_fixed.bam", name=names),
+        expand("distribution/{name}.cellfinder.barcode.distribution.txt", name=names),
+        expand("tsv/{name}.barcode.cell.distribution.tsv", name=names),
+        expand("tsv/{name}_doublet_scores_DoubletDetection.csv", name=names),
+        expand("plots/{name}_reads_per_cell.png", name=names),
+        expand("fastq/{name}_MCL_read1.fastq.gz", name=names),
+        expand("fastq/{name}_MCL_read2.fastq.gz", name=names),
+        expand("bam/{name}.cells.bam", name=names),
+        expand("vcf/{name}.combined.vcf", name=names),
+        expand("{name}.dna.loom", name=names),
+        expand("{name}.dna.h5", name=names),
+        expand("protein/results/{name}.protein.h5", name=names),
+        expand("{name}.combined.h5", name=names)
+
+rule barcodecode:
+    input:
+        first = expand("{dir}/{sample}_R1_001.fastq.gz", sample=samples, dir=dirs), 
+        second = expand("{dir}/{sample}_R2_001.fastq.gz", sample=samples, dir=dirs),
+    output:
+        first = "barcode/{name}_read1.with.barcodes.fastq.gz",
+        second = "barcode/{name}_read2.with.barcodes.fastq.gz",
+        barcode = "barcode/{name}_raw.barcodes.txt",
+        metrics = "barcode/{name}_01_barcode.metrics.json",
+        sam_header = "tmp/{name}.sam.header"
+    params:
+        threads = 4
+    log:
+        "barcode/{name}_barcodecode.log"
+    shell:
+        "source /users/lvelten/mscherer/software/anaconda3/bin/activate /users/lvelten/mscherer/conda/envs/tapestri ; "
+        "/users/lvelten/mscherer/conda/envs/tapestri/bin/tapestri barcode extract --input-fwd {input.first} --input-rev {input.second} --output-fwd {output.first} --output-rev {output.second} --output-barcodes {output.barcode} --output-metrics {output.metrics} --chemistry dna.V2 --no-cut-adapters --decode --cores {params.threads} --barcode-suffix -1 ; "
+        r"sed -n 's/^\([^\t]*\).*/@RG\tID:\1\tSM:\1/p' {output.barcode} > {output.sam_header} ; "
+        "2> {log}"
+
+rule alignment:
+    input:
+        first = "barcode/{name}_read1.with.barcodes.fastq.gz",
+        second = "barcode/{name}_read2.with.barcodes.fastq.gz",
+        sam_header = "tmp/{name}.sam.header",
+    output:
+        "bam/{name}_aligned.bam"
+    params:
+        tmp_sam = "tmp/tmp.sam",
+        tmp_bam = "tmp/tmp.bam",
+        threads = 6
+    log:
+        "bam/{name}_bwa.log"
+    shell:
+        "source /users/lvelten/mscherer/software/anaconda3/bin/activate /users/lvelten/mscherer/conda/envs/tapestri ; "
+        "bwa mem -C -M -t {params.threads} -H {input.sam_header} {config[ref_genome]} {input.first} {input.second} > {params.tmp_sam} ; "
+        "samtools view -@ {params.threads} -S -b {params.tmp_sam} > {params.tmp_bam} ; "
+        "samtools view -@ {params.threads} -bh -q 30 -F 4 -F 8 -F 0X0100 {params.tmp_bam} > {output} ; "
+        "rm -rf {params.tmp_sam} ; "
+        "rm -rf {params.tmp_bam} ; "
+        "2> {log}"
+
+rule picard:
+    input:
+        "bam/{name}_aligned.bam",
+    output:
+        "bam/{name}_aligned_fixed.bam"
+    log:
+        "bam/{name}_picard.log"
+    shell:
+        "source /users/lvelten/mscherer/software/anaconda3/bin/activate /users/lvelten/mscherer/conda/envs/tapestri ; "
+        "picard FixMateInformation -Xmx4g -Djava.io.tmpdir=tmp I={input} O={output} SORT_ORDER=coordinate ; "
+    "rm -rf {input} ; "
+        "2> {log}"
+
+rule distribution:
+    input:
+        "bam/{name}_aligned_fixed.bam",
+    output:
+        distribution_r1 = "distribution/{name}.cellfinder.barcode.distribution.txt",
+        distribution_r2 = "distribution/{name}.cellfinder.barcode.distribution_r2.txt"
+    params:
+        cf = "distribution/{name}.mapped.target.count.txt",
+        minus_5 = "tmp/panel_minus_5.bed",
+        foo = "tmp/tmp_count.txt",
+        threads = 6
+    log:
+        "distribution/{name}_picard.log"
+    shell:
+        "source /users/lvelten/mscherer/software/anaconda3/bin/activate /users/lvelten/mscherer/conda/envs/tapestri ; "
+        "samtools index {input} ; "
+        r"""awk '{{print $1 "\t" ($2 + 5) "\t" ($3 - 5) "\t" $4}}' {config[panel_bed]} > {params.minus_5} ; """
+        r"""samtools view -@ {params.threads} {input} | grep -oP 'RG:Z:\K.+?\b' | sort | uniq -c | sort -n -r > {params.foo} ; """
+        r"""awk '{{$1=$1}}1' {params.foo} > {params.cf} ; """
+        "perl /users/lvelten/mscherer/conda/envs/tapestri/bin/resources/Perl/distribution_barcodes_amplicon.pl --amplicon-input {params.minus_5} --bam-input {input} --output-r1 {output.distribution_r1} --output-r2 {output.distribution_r2} ; "
+        "2> {log}"
+
+rule cellfinder:
+    input:
+        "distribution/{name}.cellfinder.barcode.distribution.txt",
+    output:
+        "tsv/{name}.barcode.cell.distribution.tsv"
+    conda:
+        "argparse.yml"
+    log:
+        "tsv/{name}_cellfinder.log"
+    shell:
+        "Rscript /users/lvelten/project/Methylome/src/scTAM-seq-scripts/mscherer/tapestri/cellfinder_MCL_HC.R -f {input} -a {config[ampli_file]} -c {config[cellfinder_cutoff]} -o {output} ; "
+        "2> {log}"
+
+rule doubletdetection:
+    input:
+        "tsv/{name}.barcode.cell.distribution.tsv",
+    output:
+        "tsv/{name}_doublet_scores_DoubletDetection.csv"
+    log:
+        "tsv/{name}_doublet_detection.log"
+    shell:
+        "source /users/lvelten/mscherer/software/anaconda3/bin/activate /users/lvelten/mscherer/conda/envs/tapestri ; "
+        "python3 /users/lvelten/project/Methylome/src/scTAM-seq-scripts/mscherer/tapestri/DoubletDetection.py --input {input} --output {output} ; "
+        "2> {log}"
+
+rule reads_per_cell:
+    input:
+        cells="distribution/{name}.cellfinder.barcode.distribution.txt",
+        doublets="tsv/{name}_doublet_scores_DoubletDetection.csv"
+    output:
+        plot="plots/{name}_reads_per_cell.png",
+        metadata="plots/{name}_metadata.csv"
+    log:
+        "plots/{name}_read_per_cell.log"
+    params:
+        folder = "plots/",
+        n = "{name}"
+    shell:
+        "source /users/lvelten/mscherer/software/anaconda3/bin/activate /users/lvelten/mscherer/conda/envs/genomics ; "
+        "Rscript /users/lvelten/project/Methylome/src/scTAM-seq-scripts/mscherer/tapestri/plot_reads_per_cell.R --file {input.cells} --doublet {input.doublets} --amplicon {config[ampli_file]} --output {params.folder} --name {params.n}"
+
+rule extract_mcl_reads:
+    input:
+        read1="barcode/{name}_read1.with.barcodes.fastq.gz",
+        read2="barcode/{name}_read2.with.barcodes.fastq.gz"
+    output:
+        read1="fastq/{name}_MCL_read1.fastq.gz",
+        read2="fastq/{name}_MCL_read2.fastq.gz"
+    params:
+        prefix="fastq/{name}"
+    shell:
+        "source /users/lvelten/mscherer/software/anaconda3/bin/activate /users/lvelten/mscherer/conda/envs/genomics ; "
+        "/users/lvelten/project/Methylome/src/MCL/extract_MCL_reads.sh -a {input.read1} -b {input.read2} -c {config[mcl_forward]} -d {config[mcl_reverse]} -o {params.prefix}"
+
+rule cell_bam:
+    input:
+        cells="tsv/{name}.barcode.cell.distribution.tsv",
+        bam="bam/{name}_aligned_fixed.bam"
+    output:
+        "bam/{name}.cells.bam"
+    params:
+        txt = "tmp/cells.txt",
+        threads = 4
+    shell:
+        "source /users/lvelten/mscherer/software/anaconda3/bin/activate /users/lvelten/mscherer/conda/envs/tapestri ; "
+        r"""awk '{{if (NR > 1) print $1}}' {input.cells} > {params.txt} ; """
+        "samtools view -@ {params.threads} -b -R {params.txt} {input.bam} > {output} ; "
+        "samtools index {output}"
+
+rule genotyping_split:
+    input:
+        expand("bam/{name}.cells.bam", name=names)
+    output:
+        directory("tmp/{name}_bam")
+    params:
+        db_folder = "tmp/gendb",
+        threads = 12
+    shell:
+        "source /users/lvelten/mscherer/software/anaconda3/bin/activate /users/lvelten/mscherer/conda/envs/tapestri ; "
+        "python3 /users/lvelten/mscherer/conda/envs/tapestri/lib/python3.6/site-packages/missionbio/dna/split_bam_by_barcode.py -i {input} -o {output} -n {params.threads} ; "
+
+rule genotyping_haplotype:
+    input:
+        expand("tmp/{name}_bam", name=names)
+    output:
+        directory("tmp/{name}_vcf")
+    params:
+        vcf_folder = "tmp/bam",
+        threads = 12
+    shell:
+        "source /users/lvelten/mscherer/software/anaconda3/bin/activate /users/lvelten/mscherer/conda/envs/tapestri ; "
+        "python3 /users/lvelten/project/Methylome/src/MissionBio/gatk_haplotype_caller.py --input-dir {input} --output-dir {output} --cores {params.threads} --config {config[gatk_config]} --prefix gatk ; "
+
+rule genotyping_import:
+    input:
+        expand("tmp/{name}_vcf", name=names)
+    output:
+        directory("tmp/{name}_gendb")
+    params:
+        folder = "tmp/bam",
+        vcf_folder = "tmp/bam",
+        db_folder = "tmp/gendb"
+    shell:
+        "source /users/lvelten/mscherer/software/anaconda3/bin/activate /users/lvelten/mscherer/conda/envs/tapestri ; "
+        """
+        call_string=""
+        for f in {input}/*.vcf.gz; do
+                call_string+=" --variant $f"
+        done ;
+        """
+        "gatk GenomicsDBImport $call_string --genomicsdb-workspace-path {output} --intervals {config[panel_bed]} --merge-input-intervals --batch-size 150 ; "
+
+rule genotyping:
+    input:
+        "tmp/{name}_gendb"
+    output:
+        "vcf/{name}.combined.vcf"
+    params:
+        folder = "tmp/bam",
+        vcf_folder = "tmp/bam",
+        db_folder = "tmp/gendb",
+        threads = 12
+    shell:
+        "source /users/lvelten/mscherer/software/anaconda3/bin/activate /users/lvelten/mscherer/conda/envs/tapestri ; "
+        """
+        export  _JAVA_OPTIONS="-Xmx50g" ;
+        alias java='java -Xmx50g' ;
+        gatk GenotypeGVCFs --java-options "-Xmx120g" -R {config[ref_genome]} --heterozygosity 0.001 --max-alternate-alleles 2 -V gendb://{input} -L {config[panel_bed]} --all-sites --include-non-variant-sites --genomicsdb-use-vcf-codec -O {output}
+    """
+
+rule create_loom:
+    input:
+        vcf="vcf/{name}.combined.vcf",
+        cells="tsv/{name}.barcode.cell.distribution.tsv",
+        metadata="plots/{name}_metadata.csv"
+    output:
+        "{name}.dna.loom"
+    params:
+        txt = "tmp/cells.txt",
+        log = "tmp/loom.log",
+        yaml = "tmp/hg19.yaml",
+        threads = 4
+    shell:
+        """
+        printf "genome:\n version: hg19" > {params.yaml} ;
+        source /users/lvelten/mscherer/software/anaconda3/bin/activate /users/lvelten/mscherer/conda/envs/tapestri ; 
+        python3 /users/lvelten/mscherer/conda/envs/tapestri/lib/python3.6/site-packages/missionbio/core/vcf_to_loom.py \
+        {params.yaml} \
+        {config[panel_bed]} \
+        {input.metadata} \
+        {input.vcf} \
+        {output} \
+        --logfile {params.log} 
+        """
+
+rule create_h5:
+    input:
+        vcf="vcf/{name}.combined.vcf",
+        cells="tsv/{name}.barcode.cell.distribution.tsv",
+        loom="{name}.dna.loom"
+    output:
+        h5="{name}.dna.h5",
+        vcf="vcf/{name}.combined.vcf.gz"
+    params:
+        txt = "tmp/cells.txt",
+        threads = 4,
+        metadata = "tmp/metadata.json",
+        n = "{name}"
+    shell:
+        """
+        source /users/lvelten/mscherer/software/anaconda3/bin/activate /users/lvelten/mscherer/conda/envs/tapestri ; 
+        bgzip {input.vcf} ;
+        printf "{{\n \\"sample_name\\": \\"{params.n}\\",\n \\"pipeline_version\\": \\"2.0.1\\",\n \\"genome_version\\": \\"hg19\\",\n \\"panel_name\\": \\"MCL\\",\n \\"n_amplicons\\": 910,\n \\"chemistry_version\\": \\"V2\\"\n}}" > {params.metadata} ;
+        tapestri h5 create dna \
+        --vcf {input.vcf}.gz \
+        --read-counts {input.cells} \
+        --metadata {params.metadata} \
+        --output {output.h5} ;
+        rm -rf barcode/
+        """
+
+rule protein_pipeline:
+    input:
+        first = expand("{dir}/{sample}_R1_001.fastq.gz", sample=samples_protein, dir=dirs), 
+        second = expand("{dir}/{sample}_R2_001.fastq.gz", sample=samples_protein, dir=dirs)
+    output:
+        h5 = "protein/results/{name}.protein.h5"
+    params:
+        threads = 4,
+        n = "{name}",
+        tmp = "protein/tmp/"
+    shell:
+        """
+        source /users/lvelten/mscherer/software/anaconda3/bin/activate /users/lvelten/mscherer/conda/envs/tapestri ; 
+        tapestri protein run \
+        --ab-adapters-3 {config[adapter_3]} \
+        --ab-adapters-5 {config[adapter_5]} \
+        --ab-barcodes {config[ab_barcodes]} \
+        --output-folder {params.tmp} \
+        --output-prefix {params.n} \
+        --n-cores {params.threads} \
+        --r1 {input.first} \
+        --r2 {input.second} ;
+        mv {params.tmp}/* protein/ ;
+        rm -rf {params.tmp}
+        """
+
+rule merge_h5:
+    input:
+        dna = "{name}.dna.h5",
+        protein = "protein/results/{name}.protein.h5"
+    output:
+        "{name}.combined.h5"
+    shell:
+        """
+        source /users/lvelten/mscherer/software/anaconda3/bin/activate /users/lvelten/mscherer/conda/envs/tapestri ; 
+        tapestri h5 merge assays {input.dna} {input.protein} {output} ;
+    rm -rf tmp/
+        """
