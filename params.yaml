@@ -1,0 +1,5 @@
+# Parameters
+reads: "${projectDir}/test_data/*_read{1,2}.fastq.gz"
+hook: ""
+email: ""
+output: "${projectDir}/outfolder"

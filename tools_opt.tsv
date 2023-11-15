@@ -1,0 +1,2 @@
+#tool	extrapars
+tapestri-barcode-extract	"--chemistry dna.V2 --no-cut-adapters --decode --barcode-suffix -1"
