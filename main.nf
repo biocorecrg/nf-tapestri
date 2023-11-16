@@ -31,6 +31,7 @@ BIOCORE@CRG Tapestri - N F  ~  version ${version}
                                                                                        
 ====================================================
 reads                       : ${params.reads}
+genome                      : ${params.genome}
 email                       : ${params.email}
 output (output folder)      : ${params.output}
 """
@@ -52,16 +53,27 @@ progPars = getParameters(tools_opt)
 
 include { final_message; notify_slack } from "${moduleFolder}/global_functions.nf"
 include { barcode_extract } from "${localModule}" addParams(EXTRAPARS:progPars["tapestri-barcode-extract"], LABEL: "big_cpus")
+include { INDEX as BWA_INDEX } from "${moduleFolder}/alignment/bwa" addParams(CONTAINER:"biocorecrg/tapestri:2.0.1")
+include { map_with_params as bwa_map } from "${moduleFolder}/alignment/bwa" addParams(CONTAINER:"biocorecrg/tapestri:2.0.1", EXTRAPARS:progPars["bwa"], LABEL: "big_cpus")
+include { BVIEW as SAMTOOLS_VIEW } from "${moduleFolder}/misc/samtools" addParams(CONTAINER:"biocorecrg/tapestri:2.0.1", EXTRAPARS:progPars["samtools"], LABEL: "big_cpus")
 
 Channel.fromFilePairs( params.reads, size: 2 )
 .ifEmpty { error "Cannot find any reads matching: ${params.reads}" }
-.set { read_files}    
+.set { read_files }    
+
+
 
 workflow {
-	barcode_extract(read_files)
+	outbc = barcode_extract(read_files)
+	index = BWA_INDEX(params.genome)
+	outbc.barcode_reads.join(outbc.sam_header).map{
+		[ it[0], [ it[1], it[2] ], "-H ${it[3]}" ]
+	}.set{ data_for_alignment }
+	outmap = bwa_map(data_for_alignment, index)
+	outmap.view()
+	SAMTOOLS_VIEW(outmap)
 
 }
-
 
 
 

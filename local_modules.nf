@@ -37,6 +37,7 @@ process barcode_extract {
 	tuple val(sampleID), path("${sampleID}_read1.with.barcodes.fastq.gz"), path("${sampleID}_read2.with.barcodes.fastq.gz"), emit: barcode_reads  
 	tuple val(sampleID), path("${sampleID}_raw.barcodes.txt"), emit: raw_barcodes  
 	tuple val(sampleID), path("${sampleID}_01_barcode.metrics.json"), emit: barcode_metrics  
+	tuple val(sampleID), path("${sampleID}.sam.header"), emit: sam_header
 
 	script:
 	"""
@@ -48,6 +49,8 @@ process barcode_extract {
 		--output-barcodes ${sampleID}_raw.barcodes.txt \
 		--output-metrics ${sampleID}_01_barcode.metrics.json \
 		--cores ${task.cpus} ${params.EXTRAPARS}
+	
+		get_header.sh ${sampleID}_raw.barcodes.txt ${sampleID}.sam.header
 	"""
 
 }
