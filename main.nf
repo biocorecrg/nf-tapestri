@@ -32,6 +32,7 @@ BIOCORE@CRG Tapestri - N F  ~  version ${version}
 ====================================================
 reads                       : ${params.reads}
 genome                      : ${params.genome}
+panel                       : ${params.panel}
 email                       : ${params.email}
 output (output folder)      : ${params.output}
 """
@@ -44,7 +45,6 @@ localModule    = "${projectDir}/local_modules.nf"
 tools_opt      = "${projectDir}/tools_opt.tsv"
 //adapters       = "${projectDir}/adapters.txt"
 
-//if( !genome_file.exists() ) exit 1, "Missing genome file: ${genome_file}"
 
 outputfolder    = "${params.output}"
 
@@ -53,14 +53,23 @@ progPars = getParameters(tools_opt)
 
 include { final_message; notify_slack } from "${moduleFolder}/global_functions.nf"
 include { barcode_extract } from "${localModule}" addParams(EXTRAPARS:progPars["tapestri-barcode-extract"], LABEL: "big_cpus")
+include { make_target_counts } from "${localModule}" addParams(LABEL: "big_cpus")
+include { make_minus_5panel } from "${localModule}"
+include { make_distribution } from "${localModule}"
+
 include { INDEX as BWA_INDEX } from "${moduleFolder}/alignment/bwa" addParams(CONTAINER:"biocorecrg/tapestri:2.0.1")
 include { map_with_params as bwa_map } from "${moduleFolder}/alignment/bwa" addParams(CONTAINER:"biocorecrg/tapestri:2.0.1", EXTRAPARS:progPars["bwa"], LABEL: "big_cpus")
 include { BVIEW as SAMTOOLS_VIEW } from "${moduleFolder}/misc/samtools" addParams(CONTAINER:"biocorecrg/tapestri:2.0.1", EXTRAPARS:progPars["samtools"], LABEL: "big_cpus")
+include { FIXMATE_INFO as PICARD_FIXMATE } from "${moduleFolder}/misc/picard" addParams(CONTAINER:"biocorecrg/tapestri:2.0.1", EXTRAPARS:progPars["picard"], LABEL: "big_cpus")
+include { INDEX as SAMTOOLS_INDEX } from "${moduleFolder}/misc/samtools" addParams(CONTAINER:"biocorecrg/tapestri:2.0.1", LABEL: "big_cpus")
 
 Channel.fromFilePairs( params.reads, size: 2 )
 .ifEmpty { error "Cannot find any reads matching: ${params.reads}" }
 .set { read_files }    
 
+Channel.fromPath( params.panel )
+.ifEmpty { error "Cannot find any panel file ${params.panel}" }
+.set { panel_file }    
 
 
 workflow {
@@ -71,8 +80,13 @@ workflow {
 	}.set{ data_for_alignment }
 	outmap = bwa_map(data_for_alignment, index)
 	outmap.view()
-	SAMTOOLS_VIEW(outmap)
-
+	bams = SAMTOOLS_VIEW(outmap)
+	fixed = PICARD_FIXMATE(bams)
+	indexes = SAMTOOLS_INDEX(fixed)
+	m5panel = make_minus_5panel(panel_file)
+	index_reads = fixed.join(indexes) 
+	make_target_counts(index_reads)
+	make_distribution(index_reads.combine(m5panel))
 }
 
 

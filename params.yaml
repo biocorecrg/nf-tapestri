@@ -1,6 +1,7 @@
 # Parameters
 reads: "${projectDir}/test_data/*_read{1,2}.fastq.gz"
-genome: "${projectDir}/anno/GRCh38.primary_assembly.genome.fa.gz"
+genome: "${projectDir}/anno/GRCh37.p13.genome.fa.gz"
+panel: "${projectDir}/anno/panel_info.bed" 
 hook: ""
 email: ""
 output: "${projectDir}/outfolder"

@@ -55,4 +55,65 @@ process barcode_extract {
 
 }
 
+process make_minus_5panel {
+	//publishDir outputBarcode, mode: 'copy'
+	container 'biocorecrg/tapestri:2.0.1'
+    label (params.LABEL)
+	tag("${panelfile}")
+
+	input:
+	path(panelfile)
+	
+	output:
+	path("${panelfile}_minus_5.bed")
+	
+	script:
+	"""
+	awk '{print \$1 "\t" (\$2 + 5) "\t" (\$3 - 5) "\t" \$4}' ${panelfile} > ${panelfile}_minus_5.bed 
+	"""
+}	
+
+process make_target_counts {
+	container 'biocorecrg/tapestri:2.0.1'
+    label (params.LABEL)
+	tag("${sampleID}")
+	
+	input:
+	tuple val(sampleID), path(reads), path(index)
+
+	output:
+	tuple val(sampleID), path("${sampleID}.mapped.target.count.txt")
+
+	script:
+	"""
+	make_target_counts.sh ${reads} ${sampleID}.mapped.target.count.txt ${task.cpus}
+ 	"""
+
+}
+
+
+process make_distribution {
+	publishDir outputBarcode, mode: 'copy'
+	container 'biocorecrg/tapestri:2.0.1'
+    label (params.LABEL)
+	tag("${sampleID}")
+	
+	input:
+	tuple val(sampleID), path(reads), path(index), path(panel5)
+
+	output:
+	tuple val(sampleID), path("${sampleID}.cellfinder.barcode.distribution.txt"), path("${sampleID}.cellfinder.barcode.distribution_r2.txt")
+
+	script:
+	"""
+		/home/biodocker/tapestripipeline/bin/resources/Perl/distribution_barcodes_amplicon.pl \
+		--amplicon-input ${panel5} \
+		--bam-input ${reads} \
+		--output-r1 ${sampleID}.cellfinder.barcode.distribution.txt \
+		--output-r2 ${sampleID}.cellfinder.barcode.distribution_r2.txt 
+ 	"""
+
+}
+
+
 
