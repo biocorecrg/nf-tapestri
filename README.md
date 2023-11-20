@@ -6,14 +6,15 @@ Nextflow pipeline for Beekiman lab
 ![GRAPH](https://github.com/biocorecrg/nf-tapestri/blob/main/img/graph_tapestri.png?raw=true)
 
 ## Road map
-1. little test dataset
-2. small prototype with one step
-3. adding more steps
-4. adding final report
-5. writing documentation
+- [x] little test dataset
+- [x] small prototype with one step
+- [x] adding more steps
+- [ ] adding final report
+- [ ] writing documentation
 
 
 ## Install
+
 - Use singularity
 Edit the `$HOME/.bashrc` file adding:
 
@@ -23,11 +24,15 @@ module load Java/11.0.2
 module load Singularity/3.7.0
 ```
 
+login and logout. From now on you can use singularity. 
+
 - Install nextflow
 
 ```
 curl -s https://get.nextflow.io | bash
 ```
+
+You can place the executable in a place with other binaries and add that folder to your `$PATH`
 
 - Install the pipeline
 
@@ -56,17 +61,25 @@ Pipeline parameters are inside the `params.yaml` file:
 ```
 # Parameters
 reads: "${projectDir}/test_data/*_read{1,2}.fastq.gz"
+genome: "${projectDir}/anno/GRCh37.p13.genome.fa.gz"
+panel: "${projectDir}/anno/panel_info.bed" 
+ampli: "${projectDir}/anno/CO-200.zip"
 hook: ""
 email: ""
 output: "${projectDir}/outfolder"
-
 ```
 
 The command line of the single tools can be tweaked using the file `tools_opt.tsv`. This is the one currently:
 
 ```
 #tool	extrapars
+
+#tool	extrapars
 tapestri-barcode-extract	"--chemistry dna.V2 --no-cut-adapters --decode --barcode-suffix -1"
+bwa	"-C -M"
+samtools	"-bh -q 30 -F 4 -F 8 -F 0X0100"
+picard	"SORT_ORDER=coordinate"
+cellfinder_MCL_HC.R	"-c 0.7"
 
 ```
 
@@ -85,4 +98,6 @@ nextflow run main.nf -params-file params.yaml -bg -w //nfs/scratch01/YOURGROUP/w
 
 The following folders are generated:
 
-...
+- bam
+- barcode
+- distribution
