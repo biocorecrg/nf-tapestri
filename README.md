@@ -46,6 +46,22 @@ or
 git clone https://github.com/biocorecrg/nf-tapestri.git --recurse-submodules 
 ```
 
+### Downloading the tapestry image
+For downloading the tapestri singularity image you can use the INSTALL.sh script that essentially does a `wget` and a `move` to the path with all the singularity directory.
+
+```
+sh INSTALL $user $password $path
+```
+
+Un our HPC the cache folder for the singularity images is:
+
+```
+/software/bi/biocore_tools/singularity_containers/
+```
+
+But you can change it by editing the `nextflow.config` file at the section `singularity.cacheDir`
+
+
 ## Upgrade
 
 For upgrading the pipeline just run inside the `nf-tapestri` folder
