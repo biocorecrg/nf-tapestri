@@ -1,5 +1,5 @@
-outputBarcode   = "${params.output}/Barcode"
-
+outputBarcode   = "${params.output}/barcode"
+outputDist      = "${params.output}/distribution"
 
 params.EXTRAPARS = ""
 params.LABEL = ""
@@ -27,7 +27,7 @@ def getParameters(pars_tools_file) {
 process barcode_extract {
 	publishDir outputBarcode, mode: 'copy'
 	container 'biocorecrg/tapestri:2.0.1'
-    label (params.LABEL)
+        label (params.LABEL)
 	tag("${sampleID}")
 	
 	input:
@@ -58,7 +58,7 @@ process barcode_extract {
 process make_minus_5panel {
 	//publishDir outputBarcode, mode: 'copy'
 	container 'biocorecrg/tapestri:2.0.1'
-    label (params.LABEL)
+        label (params.LABEL)
 	tag("${panelfile}")
 
 	input:
@@ -74,8 +74,10 @@ process make_minus_5panel {
 }	
 
 process make_target_counts {
+        publishDir outputBarcode, mode: 'copy'
+
 	container 'biocorecrg/tapestri:2.0.1'
-    label (params.LABEL)
+        label (params.LABEL)
 	tag("${sampleID}")
 	
 	input:
@@ -93,7 +95,7 @@ process make_target_counts {
 
 
 process make_distribution {
-	publishDir outputBarcode, mode: 'copy'
+	publishDir outputDist, mode: 'copy'
 	container 'biocorecrg/tapestri:2.0.1'
         label (params.LABEL)
  	tag("${sampleID}")
@@ -119,7 +121,7 @@ process make_distribution {
 
 
 process cellfinder_MCL {
-        publishDir outputBarcode, mode: 'copy'
+        publishDir outputDist, mode: 'copy'
         container 'biocorecrg/tapestri_r:0.0.1'
         label (params.LABEL)
         tag("${sampleID}")
@@ -128,11 +130,11 @@ process cellfinder_MCL {
         tuple val(sampleID), path(input), path(amplifile)
 
         output:
-        path("output")
+        path("${sampleID}.barcode.cell.distribution.tsv")
 
         script:
         """
-        cellfinder_MCL_HC.R -f ${input} -a ${amplifile} ${params.EXTRAPARS} -o ./output
+        cellfinder_MCL_HC.R -f ${input} -a ${amplifile} ${params.EXTRAPARS} -o ./${sampleID}.barcode.cell.distribution.tsv
         """
 
 }

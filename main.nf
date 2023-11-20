@@ -47,7 +47,8 @@ tools_opt      = "${projectDir}/tools_opt.tsv"
 //adapters       = "${projectDir}/adapters.txt"
 
 
-outputfolder    = "${params.output}"
+outputfolder     = "${params.output}"
+outputAlignments = "${params.output}/bam"
 
 include { getParameters } from "${localModule}"
 progPars = getParameters(tools_opt)
@@ -60,10 +61,10 @@ include { make_distribution } from "${localModule}"
 include { cellfinder_MCL } from "${localModule}" addParams( EXTRAPARS:progPars["cellfinder_MCL_HC.R"] )
 
 include { INDEX as BWA_INDEX } from "${moduleFolder}/alignment/bwa" addParams(CONTAINER:"biocorecrg/tapestri:2.0.1")
-include { map_with_params as bwa_map } from "${moduleFolder}/alignment/bwa" addParams(CONTAINER:"biocorecrg/tapestri:2.0.1", EXTRAPARS:progPars["bwa"], LABEL: "big_cpus")
+ilignment/bwanclude { map_with_params as bwa_map } from "${moduleFolder}/alignment/bwa" addParams(CONTAINER:"biocorecrg/tapestri:2.0.1", EXTRAPARS:progPars["bwa"], OUTPUT: outputAlignments, LABEL: "big_cpus")
 include { BVIEW as SAMTOOLS_VIEW } from "${moduleFolder}/misc/samtools" addParams(CONTAINER:"biocorecrg/tapestri:2.0.1", EXTRAPARS:progPars["samtools"], LABEL: "big_cpus")
-include { FIXMATE_INFO as PICARD_FIXMATE } from "${moduleFolder}/misc/picard" addParams(CONTAINER:"biocorecrg/tapestri:2.0.1", EXTRAPARS:progPars["picard"], LABEL: "big_cpus")
-include { INDEX as SAMTOOLS_INDEX } from "${moduleFolder}/misc/samtools" addParams(CONTAINER:"biocorecrg/tapestri:2.0.1", LABEL: "big_cpus")
+include { FIXMATE_INFO as PICARD_FIXMATE } from "${moduleFolder}/misc/picard" addParams(CONTAINER:"biocorecrg/tapestri:2.0.1", EXTRAPARS:progPars["picard"], OUTPUT: outputAlignments, LABEL: "big_cpus")
+include { INDEX as SAMTOOLS_INDEX } from "${moduleFolder}/misc/samtools" addParams(CONTAINER:"biocorecrg/tapestri:2.0.1", OUTPUT: outputAlignments LABEL: "big_cpus")
 
 Channel.fromFilePairs( params.reads, size: 2 )
 .ifEmpty { error "Cannot find any reads matching: ${params.reads}" }

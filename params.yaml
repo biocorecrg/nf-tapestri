@@ -2,7 +2,7 @@
 reads: "${projectDir}/test_data/*_read{1,2}.fastq.gz"
 genome: "${projectDir}/anno/GRCh37.p13.genome.fa.gz"
 panel: "${projectDir}/anno/panel_info.bed" 
-ampli: "${projectDir}/anno/co-200.zip"
+ampli: "${projectDir}/anno/CO-200.zip"
 hook: ""
 email: ""
 output: "${projectDir}/outfolder"
