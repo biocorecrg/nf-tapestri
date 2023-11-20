@@ -95,14 +95,15 @@ process make_target_counts {
 process make_distribution {
 	publishDir outputBarcode, mode: 'copy'
 	container 'biocorecrg/tapestri:2.0.1'
-    label (params.LABEL)
-	tag("${sampleID}")
+        label (params.LABEL)
+ 	tag("${sampleID}")
 	
 	input:
 	tuple val(sampleID), path(reads), path(index), path(panel5)
 
 	output:
-	tuple val(sampleID), path("${sampleID}.cellfinder.barcode.distribution.txt"), path("${sampleID}.cellfinder.barcode.distribution_r2.txt")
+	tuple val(sampleID), path("${sampleID}.cellfinder.barcode.distribution.txt"), emit: dist_read1 
+        tuple val(sampleID), path("${sampleID}.cellfinder.barcode.distribution_r2.txt"), emit: dist_read2
 
 	script:
 	"""
@@ -112,6 +113,27 @@ process make_distribution {
 		--output-r1 ${sampleID}.cellfinder.barcode.distribution.txt \
 		--output-r2 ${sampleID}.cellfinder.barcode.distribution_r2.txt 
  	"""
+
+}
+
+
+
+process cellfinder_MCL {
+        publishDir outputBarcode, mode: 'copy'
+        container 'biocorecrg/tapestri_r:0.0.1'
+        label (params.LABEL)
+        tag("${sampleID}")
+
+        input:
+        tuple val(sampleID), path(input), path(amplifile)
+
+        output:
+        path("output")
+
+        script:
+        """
+        cellfinder_MCL_HC.R -f ${input} -a ${amplifile} ${params.EXTRAPARS} -o ./output
+        """
 
 }
 
