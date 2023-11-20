@@ -33,6 +33,7 @@ BIOCORE@CRG Tapestri - N F  ~  version ${version}
 reads                       : ${params.reads}
 genome                      : ${params.genome}
 panel                       : ${params.panel}
+ampli                       : ${params.ampli}
 email                       : ${params.email}
 output (output folder)      : ${params.output}
 """
@@ -56,6 +57,7 @@ include { barcode_extract } from "${localModule}" addParams(EXTRAPARS:progPars["
 include { make_target_counts } from "${localModule}" addParams(LABEL: "big_cpus")
 include { make_minus_5panel } from "${localModule}"
 include { make_distribution } from "${localModule}"
+include { cellfinder_MCL } from "${localModule}" addParams( EXTRAPARS:progPars["cellfinder_MCL_HC.R"] )
 
 include { INDEX as BWA_INDEX } from "${moduleFolder}/alignment/bwa" addParams(CONTAINER:"biocorecrg/tapestri:2.0.1")
 include { map_with_params as bwa_map } from "${moduleFolder}/alignment/bwa" addParams(CONTAINER:"biocorecrg/tapestri:2.0.1", EXTRAPARS:progPars["bwa"], LABEL: "big_cpus")
@@ -70,6 +72,10 @@ Channel.fromFilePairs( params.reads, size: 2 )
 Channel.fromPath( params.panel )
 .ifEmpty { error "Cannot find any panel file ${params.panel}" }
 .set { panel_file }    
+
+Channel.fromPath( params.ampli)
+.ifEmpty { error "Cannot find any ampli file ${params.ampli}" }
+.set { ampli_file }
 
 
 workflow {
@@ -86,7 +92,9 @@ workflow {
 	m5panel = make_minus_5panel(panel_file)
 	index_reads = fixed.join(indexes) 
 	make_target_counts(index_reads)
-	make_distribution(index_reads.combine(m5panel))
+	distros = make_distribution(index_reads.combine(m5panel))
+        cellfinder_MCL(distros.dist_read1.combine(ampli_file))
+	//distros.view()
 }
 
 
@@ -96,8 +104,8 @@ workflow.onComplete {
     def text = final_message("NF-Tapestri")
     println text
     if (params.hook != "") {
-    	notify_slack(text, params.hook)
-	}
+       notify_slack(text, params.hook)
+    }
 }
 
 /*
