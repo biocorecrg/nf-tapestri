@@ -1,0 +1,22 @@
+# The name of the sample as it comes from the sequnecer. This should be the part in front of _R1_001.fastq.gz
+sample: 'T32_4_lib_07437AAE_GAGACGAT-ACCGGTTA'
+# The same for the protein sample
+sample_protein: 'T32_P7_lib_07441AAE_CTCTCTAC-AAGCCTGA'
+# The name as you want to store it
+name: 'T32'
+# The path where the raw fastq files are stored
+path: '/users/rbeekman/sequencing_data/Roser_Zaurin/2023-07-05_AH2YG5DSX7/BEEKMANREN_40'
+# Some reference files
+ref_genome: '/users/rbeekman/abianchi/test_pipeline/ref/hg19/ucsc_hg19.fa'
+panel_bed: '/users/rbeekman/abianchi/test_pipeline/panel_info/dna_pipeline/panel_info.bed'
+ampli_file: '/users/rbeekman/abianchi/test_pipeline/panel_info/dna_pipeline/panel_info.tsv'
+mcl_forward: '/users/rbeekman/abianchi/test_pipeline/panel_info/dna_pipeline/MCL_forward.txt'
+mcl_reverse: '/users/rbeekman/abianchi/test_pipeline/panel_info/dna_pipeline/MCL_backward.txt'
+# The cellfinder cutoff as used by the pipeline
+cellfinder_cutoff: 0.7
+# GATK configurations
+gatk_config: /users/rbeekman/abianchi/test_pipeline/MCL/gatk_config.yaml
+# Configuration of the protein pipeline
+adapter_3: '/users/rbeekman/abianchi/test_pipeline/panel_info/protein_pipeline/ab_adapters_3.fasta'
+adapter_5: '/users/rbeekman/abianchi/test_pipeline/panel_info/protein_pipeline/ab_adapters_5.fasta'
+ab_barcodes: '/users/rbeekman/abianchi/test_pipeline/panel_info/protein_pipeline/totalseq-d-heme-oncology-CD27.csv'
