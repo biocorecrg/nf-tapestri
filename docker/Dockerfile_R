@@ -1,6 +1,23 @@
 # This will do biocorecrg/tapestri_R:0.1
-FROM r-base:4.3.2
+FROM biocorecrg/centos-perlbrew-pyenv-java
+
+# File Author / Maintainer
+MAINTAINER Toni Hermoso Pulido <toni.hermoso@crg.eu>
+MAINTAINER Luca Cozzuto <lucacozzuto@gmail.com> 
+#
+ARG R_VERSION=3.6.0
+#
+# #upgrading pip
+RUN pip install --upgrade pip
+
+# Install R and R packages
+RUN yum install epel-release libxml2-devel libcurl-devel -y
+RUN yum install R-${R_VERSION} -y
+RUN mkdir -p /usr/share/doc/R-${R_VERSION}/html
+
 
 RUN Rscript -e "install.packages(c('argparse'), repos='http://cran.us.r-project.org')"
+
+
  
 
