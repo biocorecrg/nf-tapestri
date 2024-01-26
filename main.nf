@@ -34,6 +34,7 @@ reads                       : ${params.reads}
 genome                      : ${params.genome}
 panel                       : ${params.panel}
 ampli                       : ${params.ampli}
+cellfinder					: ${params.cellfinder}
 email                       : ${params.email}
 output (output folder)      : ${params.output}
 """
@@ -58,10 +59,13 @@ include { barcode_extract } from "${localModule}" addParams(EXTRAPARS:progPars["
 include { make_target_counts } from "${localModule}" addParams(LABEL: "big_cpus")
 include { make_minus_5panel } from "${localModule}"
 include { make_distribution } from "${localModule}"
+include { ectractAmpliconsFromPanelInfo } from "${localModule}"
+
 include { cellfinder_MCL } from "${localModule}" addParams( EXTRAPARS:progPars["cellfinder_MCL_HC.R"] )
+include { cellfinder_scTAM } from "${localModule}" addParams( EXTRAPARS:progPars["cellfinder_scTAMseq.R"] )
 
 include { INDEX as BWA_INDEX } from "${moduleFolder}/alignment/bwa" addParams(CONTAINER:"biocorecrg/tapestri:2.0.1")
-include { map_with_params as bwa_map } from "${moduleFolder}/alignment/bwa" addParams(CONTAINER:"biocorecrg/tapestri:2.0.1", EXTRAPARS:progPars["bwa"], OUTPUT: outputAlignments, LABEL: "big_cpus")
+include { map_with_params as bwa_map } from "${moduleFolder}/alignment/bwa" addParams(CONTAINER:"biocorecrg/tapestri:2.0.1", EXTRAPARS:progPars["bwa"], LABEL: "big_cpus")
 include { BVIEW as SAMTOOLS_VIEW } from "${moduleFolder}/misc/samtools" addParams(CONTAINER:"biocorecrg/tapestri:2.0.1", EXTRAPARS:progPars["samtools"], LABEL: "big_cpus")
 include { FIXMATE_INFO as PICARD_FIXMATE } from "${moduleFolder}/misc/picard" addParams(CONTAINER:"biocorecrg/tapestri:2.0.1", EXTRAPARS:progPars["picard"], OUTPUT: outputAlignments, LABEL: "big_cpus")
 include { INDEX as SAMTOOLS_INDEX } from "${moduleFolder}/misc/samtools" addParams(CONTAINER:"biocorecrg/tapestri:2.0.1", OUTPUT: outputAlignments, LABEL: "big_cpus")
@@ -74,10 +78,6 @@ Channel.fromPath( params.panel )
 .ifEmpty { error "Cannot find any panel file ${params.panel}" }
 .set { panel_file }    
 
-Channel.fromPath( params.ampli)
-.ifEmpty { error "Cannot find any ampli file ${params.ampli}" }
-.set { ampli_file }
-
 
 workflow {
 	outbc = barcode_extract(read_files)
@@ -86,7 +86,6 @@ workflow {
 		[ it[0], [ it[1], it[2] ], "-H ${it[3]}" ]
 	}.set{ data_for_alignment }
 	outmap = bwa_map(data_for_alignment, index)
-	outmap.view()
 	bams = SAMTOOLS_VIEW(outmap)
 	fixed = PICARD_FIXMATE(bams)
 	indexes = SAMTOOLS_INDEX(fixed)
@@ -94,7 +93,23 @@ workflow {
 	index_reads = fixed.join(indexes) 
 	make_target_counts(index_reads)
 	distros = make_distribution(index_reads.combine(m5panel))
-        cellfinder_MCL(distros.dist_read1.combine(ampli_file))
+    switch(params.cellfinder) {
+        case "cellfinder_MCL_HC.R":
+			Channel.fromPath( params.ampli )
+			.ifEmpty { error "Cannot find any ampli file ${params.ampli}" }.set { ampli_file }
+    		cellfinder_MCL(distros.dist_read1.combine(ampli_file))
+    		break;
+    	case "cellfinder_scTAMseq.R":
+    		if ( params.ampli == "") {
+    			ampli_file = ectractAmpliconsFromPanelInfo(panel_file) 
+			} else {
+				Channel.fromPath( params.ampli )
+				.ifEmpty { error "Cannot find any ampli file ${params.ampli}" }.set { ampli_file }		
+			}
+     	    cellfinder_scTAM(distros.dist_read1.combine(ampli_file))
+    		break;
+
+    }
 	//distros.view()
 }
 
