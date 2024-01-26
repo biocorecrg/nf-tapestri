@@ -97,7 +97,7 @@ process make_target_counts {
 process make_distribution {
 	publishDir outputDist, mode: 'copy'
 	container 'biocorecrg/tapestri:2.0.1'
-        label (params.LABEL)
+    label (params.LABEL)
  	tag("${sampleID}")
 	
 	input:
@@ -118,7 +118,40 @@ process make_distribution {
 
 }
 
+process ectractAmpliconsFromPanelInfo {
+        label (params.LABEL)
+        tag("${panelinfo}")
 
+        input:
+        path(panelinfo)
+
+        output:
+        path("amplicons.csv")
+
+        script:
+        """
+        cut -f 4 panel_info.bed | sort | uniq > amplicons.csv
+        """
+}
+
+process cellfinder_scTAM {
+        publishDir outputDist, mode: 'copy'
+        container 'biocorecrg/tapestri_r:0.0.1'
+        label (params.LABEL)
+        tag("${sampleID}")
+
+        input:
+        tuple val(sampleID), path(input), path(amplifile)
+
+        output:
+        path("${sampleID}.barcode.cell.distribution.tsv")
+
+        script:
+        """
+        cellfinder_scTAMseq.R -f ${input} -a ${amplifile} ${params.EXTRAPARS} -o ./${sampleID}.barcode.cell.distribution.tsv
+        """
+
+}
 
 process cellfinder_MCL {
         publishDir outputDist, mode: 'copy'
