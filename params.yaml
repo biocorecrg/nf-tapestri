@@ -2,6 +2,7 @@
 reads: "${projectDir}/test_data/*_read{1,2}.fastq.gz"
 genome: "${projectDir}/anno/GRCh37.p13.genome.fa.gz"
 panel: "${projectDir}/anno/panel_info.bed" 
+# ampli can be "" in case of cellfinder_scTAMseq.R
 #ampli: "${projectDir}/anno/Control_amplicons_cell_lines.csv"
 #ampli: "${projectDir}/anno/CO-200.zip"
 ampli: ""

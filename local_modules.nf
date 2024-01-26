@@ -1,5 +1,5 @@
-outputBarcode   = "${params.output}/barcode"
-outputDist      = "${params.output}/distribution"
+//outputBarcode   = "${params.output}/barcode"
+//outputDist      = "${params.output}/distribution"
 
 params.EXTRAPARS = ""
 params.LABEL = ""
@@ -25,9 +25,9 @@ def getParameters(pars_tools_file) {
 }
 
 process barcode_extract {
-	publishDir outputBarcode, mode: 'copy'
+	//publishDir params.output, mode: 'copy'
 	container 'biocorecrg/tapestri:2.0.1'
-        label (params.LABEL)
+    label (params.LABEL)
 	tag("${sampleID}")
 	
 	input:
@@ -58,7 +58,7 @@ process barcode_extract {
 process make_minus_5panel {
 	//publishDir outputBarcode, mode: 'copy'
 	container 'biocorecrg/tapestri:2.0.1'
-        label (params.LABEL)
+    label (params.LABEL)
 	tag("${panelfile}")
 
 	input:
@@ -74,7 +74,7 @@ process make_minus_5panel {
 }	
 
 process make_target_counts {
-        publishDir outputBarcode, mode: 'copy'
+    //publishDir params.output, mode: 'copy'
 
 	container 'biocorecrg/tapestri:2.0.1'
         label (params.LABEL)
@@ -95,7 +95,7 @@ process make_target_counts {
 
 
 process make_distribution {
-	publishDir outputDist, mode: 'copy'
+	//publishDir params.output, mode: 'copy'
 	container 'biocorecrg/tapestri:2.0.1'
     label (params.LABEL)
  	tag("${sampleID}")
@@ -135,7 +135,7 @@ process ectractAmpliconsFromPanelInfo {
 }
 
 process cellfinder_scTAM {
-        publishDir outputDist, mode: 'copy'
+        //publishDir params.output, mode: 'copy'
         container 'biocorecrg/tapestri_r:0.0.1'
         label (params.LABEL)
         tag("${sampleID}")
@@ -144,7 +144,7 @@ process cellfinder_scTAM {
         tuple val(sampleID), path(input), path(amplifile)
 
         output:
-        path("${sampleID}.barcode.cell.distribution.tsv")
+        tuple val(sampleID), path("${sampleID}.barcode.cell.distribution.tsv")
 
         script:
         """
@@ -154,7 +154,7 @@ process cellfinder_scTAM {
 }
 
 process cellfinder_MCL {
-        publishDir outputDist, mode: 'copy'
+        //publishDir params.output, mode: 'copy'
         container 'biocorecrg/tapestri_r:0.0.1'
         label (params.LABEL)
         tag("${sampleID}")
@@ -163,7 +163,7 @@ process cellfinder_MCL {
         tuple val(sampleID), path(input), path(amplifile)
 
         output:
-        path("${sampleID}.barcode.cell.distribution.tsv")
+        tuple val(sampleID), path("${sampleID}.barcode.cell.distribution.tsv")
 
         script:
         """
@@ -172,5 +172,23 @@ process cellfinder_MCL {
 
 }
 
+process publishRes() {
+        publishDir params.output, mode: 'copy'
+        tag("${sampleID}")
 
+        input:
+        tuple val(sampleID), path(files)
+
+        output:
+        tuple val(sampleID), path("${sampleID}")
+
+
+        script:
+        """
+			mkdir ${sampleID}
+			mv ${files} ./${sampleID}
+        """
+
+
+}
 

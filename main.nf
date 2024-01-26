@@ -34,7 +34,7 @@ reads                       : ${params.reads}
 genome                      : ${params.genome}
 panel                       : ${params.panel}
 ampli                       : ${params.ampli}
-cellfinder					: ${params.cellfinder}
+cellfinder                  : ${params.cellfinder}
 email                       : ${params.email}
 output (output folder)      : ${params.output}
 """
@@ -60,6 +60,7 @@ include { make_target_counts } from "${localModule}" addParams(LABEL: "big_cpus"
 include { make_minus_5panel } from "${localModule}"
 include { make_distribution } from "${localModule}"
 include { ectractAmpliconsFromPanelInfo } from "${localModule}"
+include { publishRes } from "${localModule}"
 
 include { cellfinder_MCL } from "${localModule}" addParams( EXTRAPARS:progPars["cellfinder_MCL_HC.R"] )
 include { cellfinder_scTAM } from "${localModule}" addParams( EXTRAPARS:progPars["cellfinder_scTAMseq.R"] )
@@ -67,8 +68,8 @@ include { cellfinder_scTAM } from "${localModule}" addParams( EXTRAPARS:progPars
 include { INDEX as BWA_INDEX } from "${moduleFolder}/alignment/bwa" addParams(CONTAINER:"biocorecrg/tapestri:2.0.1")
 include { map_with_params as bwa_map } from "${moduleFolder}/alignment/bwa" addParams(CONTAINER:"biocorecrg/tapestri:2.0.1", EXTRAPARS:progPars["bwa"], LABEL: "big_cpus")
 include { BVIEW as SAMTOOLS_VIEW } from "${moduleFolder}/misc/samtools" addParams(CONTAINER:"biocorecrg/tapestri:2.0.1", EXTRAPARS:progPars["samtools"], LABEL: "big_cpus")
-include { FIXMATE_INFO as PICARD_FIXMATE } from "${moduleFolder}/misc/picard" addParams(CONTAINER:"biocorecrg/tapestri:2.0.1", EXTRAPARS:progPars["picard"], OUTPUT: outputAlignments, LABEL: "big_cpus")
-include { INDEX as SAMTOOLS_INDEX } from "${moduleFolder}/misc/samtools" addParams(CONTAINER:"biocorecrg/tapestri:2.0.1", OUTPUT: outputAlignments, LABEL: "big_cpus")
+include { FIXMATE_INFO as PICARD_FIXMATE } from "${moduleFolder}/misc/picard" addParams(CONTAINER:"biocorecrg/tapestri:2.0.1", EXTRAPARS:progPars["picard"], LABEL: "big_cpus")
+include { INDEX as SAMTOOLS_INDEX } from "${moduleFolder}/misc/samtools" addParams(CONTAINER:"biocorecrg/tapestri:2.0.1", LABEL: "big_cpus")
 
 Channel.fromFilePairs( params.reads, size: 2 )
 .ifEmpty { error "Cannot find any reads matching: ${params.reads}" }
@@ -80,37 +81,44 @@ Channel.fromPath( params.panel )
 
 
 workflow {
-	outbc = barcode_extract(read_files)
-	index = BWA_INDEX(params.genome)
-	outbc.barcode_reads.join(outbc.sam_header).map{
-		[ it[0], [ it[1], it[2] ], "-H ${it[3]}" ]
-	}.set{ data_for_alignment }
-	outmap = bwa_map(data_for_alignment, index)
-	bams = SAMTOOLS_VIEW(outmap)
-	fixed = PICARD_FIXMATE(bams)
-	indexes = SAMTOOLS_INDEX(fixed)
-	m5panel = make_minus_5panel(panel_file)
-	index_reads = fixed.join(indexes) 
-	make_target_counts(index_reads)
-	distros = make_distribution(index_reads.combine(m5panel))
+    outbc = barcode_extract(read_files)
+    index = BWA_INDEX(params.genome)
+    outbc.barcode_reads.join(outbc.sam_header).map{
+        [ it[0], [ it[1], it[2] ], "-H ${it[3]}" ]
+    }.set{ data_for_alignment }
+    outmap = bwa_map(data_for_alignment, index)
+    bams = SAMTOOLS_VIEW(outmap)
+    fixed = PICARD_FIXMATE(bams)
+    indexes = SAMTOOLS_INDEX(fixed)
+    m5panel = make_minus_5panel(panel_file)
+    index_reads = fixed.join(indexes) 
+    make_target_counts(index_reads)
+    distros = make_distribution(index_reads.combine(m5panel))
+
+    distrib = channel.empty()
     switch(params.cellfinder) {
         case "cellfinder_MCL_HC.R":
-			Channel.fromPath( params.ampli )
-			.ifEmpty { error "Cannot find any ampli file ${params.ampli}" }.set { ampli_file }
-    		cellfinder_MCL(distros.dist_read1.combine(ampli_file))
-    		break;
-    	case "cellfinder_scTAMseq.R":
-    		if ( params.ampli == "") {
-    			ampli_file = ectractAmpliconsFromPanelInfo(panel_file) 
-			} else {
-				Channel.fromPath( params.ampli )
-				.ifEmpty { error "Cannot find any ampli file ${params.ampli}" }.set { ampli_file }		
-			}
-     	    cellfinder_scTAM(distros.dist_read1.combine(ampli_file))
-    		break;
+            Channel.fromPath( params.ampli )
+            .ifEmpty { error "Cannot find any ampli file ${params.ampli}" }.set { ampli_file }
+            distrib = cellfinder_MCL(distros.dist_read1.combine(ampli_file))
+            break;
+        case "cellfinder_scTAMseq.R":
+            if ( params.ampli == "") {
+                ampli_file = ectractAmpliconsFromPanelInfo(panel_file) 
+            } else {
+                Channel.fromPath( params.ampli )
+                .ifEmpty { error "Cannot find any ampli file ${params.ampli}" }.set { ampli_file }      
+            }
+            distrib = cellfinder_scTAM(distros.dist_read1.combine(ampli_file))
+            break;
 
     }
-	//distros.view()
+    // collect results and publish using a custom output
+    all_res = fixed.mix(indexes).mix(distros.dist_read1).mix(distrib).groupTuple().map{
+		def name = it[0].split('_')[0]
+    	[name, it[1]]
+    }
+    publishRes(all_res)
 }
 
 
@@ -135,7 +143,7 @@ else {
     log.info "Sending the email to ${params.email}\n"
 
     workflow.onComplete {
- 	   def msg = final_message("NF-Tapestri")	
+       def msg = final_message("NF-Tapestri")   
         sendMail(to: params.email, subject: "NF-Tapestri execution", body: msg, attach: "${outputMultiQC}/multiqc_report.html")
     }
 }
