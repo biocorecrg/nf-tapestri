@@ -2,7 +2,11 @@
 reads: "${projectDir}/test_data/*_read{1,2}.fastq.gz"
 genome: "${projectDir}/anno/GRCh37.p13.genome.fa.gz"
 panel: "${projectDir}/anno/panel_info.bed" 
-ampli: "${projectDir}/anno/CO-200.zip"
+#ampli: "${projectDir}/anno/Control_amplicons_cell_lines.csv"
+#ampli: "${projectDir}/anno/CO-200.zip"
+ampli: ""
+# cellfinder can be cellfinder_scTAMseq.R / cellfinder_MCL_HC.R 
+cellfinder: "cellfinder_scTAMseq.R" 
 hook: ""
 email: ""
 output: "${projectDir}/outfolder"
