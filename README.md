@@ -50,7 +50,7 @@ git clone https://github.com/biocorecrg/nf-tapestri.git --recurse-submodules
 For downloading the tapestri singularity image you can use the INSTALL.sh script that essentially does a `wget` and a `move` to the path with all the singularity directory.
 
 ```
-sh INSTALL $user $password $path
+sh INSTALL.sh $user $password $path
 ```
 
 Un our HPC the cache folder for the singularity images is:
