@@ -96,22 +96,20 @@ workflow {
     distros = make_distribution(index_reads.combine(m5panel))
 
     distrib = channel.empty()
+    if ( params.ampli == "") {
+        ampli_file = ectractAmpliconsFromPanelInfo(panel_file) 
+    } else {
+         Channel.fromPath( params.ampli )
+         .ifEmpty { error "Cannot find any ampli file ${params.ampli}" }.set { ampli_file }
+    }
+
     switch(params.cellfinder) {
         case "cellfinder_MCL_HC.R":
-            Channel.fromPath( params.ampli )
-            .ifEmpty { error "Cannot find any ampli file ${params.ampli}" }.set { ampli_file }
             distrib = cellfinder_MCL(distros.dist_read1.combine(ampli_file))
             break;
         case "cellfinder_scTAMseq.R":
-            if ( params.ampli == "") {
-                ampli_file = ectractAmpliconsFromPanelInfo(panel_file) 
-            } else {
-                Channel.fromPath( params.ampli )
-                .ifEmpty { error "Cannot find any ampli file ${params.ampli}" }.set { ampli_file }      
-            }
             distrib = cellfinder_scTAM(distros.dist_read1.combine(ampli_file))
             break;
-
     }
     // collect results and publish using a custom output
     all_res = fixed.mix(indexes).mix(distros.dist_read1).mix(distrib).groupTuple().map{
