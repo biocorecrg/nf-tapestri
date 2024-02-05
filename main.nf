@@ -35,6 +35,7 @@ genome                      : ${params.genome}
 panel                       : ${params.panel}
 ampli                       : ${params.ampli}
 cellfinder                  : ${params.cellfinder}
+nreads                      : ${params.nreads}
 email                       : ${params.email}
 output (output folder)      : ${params.output}
 """
@@ -60,20 +61,24 @@ include { make_target_counts } from "${localModule}" addParams(LABEL: "big_cpus"
 include { make_minus_5panel } from "${localModule}"
 include { make_distribution } from "${localModule}"
 include { ectractAmpliconsFromPanelInfo } from "${localModule}"
-include { publishRes } from "${localModule}"
+include { publishRes; reshape; join_headers } from "${localModule}"
 
 include { cellfinder_MCL } from "${localModule}" addParams( EXTRAPARS:progPars["cellfinder_MCL_HC.R"] )
 include { cellfinder_scTAM } from "${localModule}" addParams( EXTRAPARS:progPars["cellfinder_scTAMseq.R"] )
 
 include { INDEX as BWA_INDEX } from "${moduleFolder}/alignment/bwa" addParams(CONTAINER:"biocorecrg/tapestri:2.0.1")
+
+include { CAT as SAMTOOLS_CAT } from "${moduleFolder}/misc/samtools" addParams(LABEL: "big_cpus")
+include { SORT as SAMTOOLS_SORT } from "${moduleFolder}/misc/samtools" addParams(LABEL: "big_cpus")
 include { map_with_params as bwa_map } from "${moduleFolder}/alignment/bwa" addParams(CONTAINER:"biocorecrg/tapestri:2.0.1", EXTRAPARS:progPars["bwa"], LABEL: "big_cpus")
 include { BVIEW as SAMTOOLS_VIEW } from "${moduleFolder}/misc/samtools" addParams(CONTAINER:"biocorecrg/tapestri:2.0.1", EXTRAPARS:progPars["samtools"], LABEL: "big_cpus")
+include { BVIEW as SAMTOOLS_GET_HEADER } from "${moduleFolder}/misc/samtools" addParams(CONTAINER:"biocorecrg/tapestri:2.0.1", EXTRAPARS: " -H ", LABEL: "big_cpus")
 include { FIXMATE_INFO as PICARD_FIXMATE } from "${moduleFolder}/misc/picard" addParams(CONTAINER:"biocorecrg/tapestri:2.0.1", EXTRAPARS:progPars["picard"], LABEL: "big_cpus")
 include { INDEX as SAMTOOLS_INDEX } from "${moduleFolder}/misc/samtools" addParams(CONTAINER:"biocorecrg/tapestri:2.0.1", LABEL: "big_cpus")
 
-Channel.fromFilePairs( params.reads, size: 2 )
+Channel.fromFilePairs( params.reads, flat: true) 
 .ifEmpty { error "Cannot find any reads matching: ${params.reads}" }
-.set { read_files }    
+.set { ori_read_files }    
 
 Channel.fromPath( params.panel )
 .ifEmpty { error "Cannot find any panel file ${params.panel}" }
@@ -81,20 +86,33 @@ Channel.fromPath( params.panel )
 
 
 workflow {
-    outbc = barcode_extract(read_files)
+	ori_read_files.splitFastq( by: params.nreads, pe: true, file: true, compress:true ).map{
+		num = "${it[1]}".split("\\.")[-3]
+		[ "${it[0]}---${num}", [ it[1], it[2] ] ]
+	}.set{read_files}
     index = BWA_INDEX(params.genome)
+    outbc = barcode_extract(read_files)
+
     outbc.barcode_reads.join(outbc.sam_header).map{
         [ it[0], [ it[1], it[2] ], "-H ${it[3]}" ]
-    }.set{ data_for_alignment }
+    }.set{ data_for_alignment } 
     outmap = bwa_map(data_for_alignment, index)
     bams = SAMTOOLS_VIEW(outmap)
     fixed = PICARD_FIXMATE(bams)
-    indexes = SAMTOOLS_INDEX(fixed)
+	fixed_headers = SAMTOOLS_GET_HEADER(fixed)
+	sam_header = join_headers(reshape(fixed_headers))
+	data_2_cat = reshape(fixed).join(sam_header)
+
+    jaln_reads = SAMTOOLS_CAT(data_2_cat)
+	sorted_jaln = SAMTOOLS_SORT(jaln_reads)
+	//sorted_jaln.view()
+	
+    indexes = SAMTOOLS_INDEX(sorted_jaln)
     m5panel = make_minus_5panel(panel_file)
-    index_reads = fixed.join(indexes) 
+    index_reads = sorted_jaln.join(indexes) 
+
     make_target_counts(index_reads)
     distros = make_distribution(index_reads.combine(m5panel))
-
     distrib = channel.empty()
     switch(params.cellfinder) {
         case "cellfinder_MCL_HC.R":
@@ -113,12 +131,14 @@ workflow {
             break;
 
     }
+    
     // collect results and publish using a custom output
-    all_res = fixed.mix(indexes).mix(distros.dist_read1).mix(distrib).groupTuple().map{
+    all_res = sorted_jaln.mix(indexes).mix(distros.dist_read1).mix(distrib).groupTuple().map{
 		def name = it[0].split('_')[0]
     	[name, it[1]]
     }
     publishRes(all_res)
+
 }
 
 

@@ -93,6 +93,28 @@ process make_target_counts {
 
 }
 
+process join_headers {
+
+	container 'biocorecrg/tapestri:2.0.1'
+    label (params.LABEL)
+ 	tag("${sampleID}")
+	
+	input:
+	tuple val(sampleID), path("headers_*")
+
+	output:
+	tuple val(sampleID), path("header.sam")
+
+	script:
+	"""
+		grep "@HD" headers_1 > header.sam 
+		grep "@SQ" headers_1 >> header.sam 
+		grep "@RG" headers_* --no-filename >> header.sam 
+ 	"""
+
+
+}
+
 
 process make_distribution {
 	//publishDir params.output, mode: 'copy'
@@ -189,6 +211,13 @@ process publishRes() {
 			mv ${files} ./${sampleID}
         """
 
-
 }
 
+// reshape the channel
+def reshape(mychannel) {
+	reshaped = mychannel.map{
+		id = it[0].split("---")[0]
+		[id, it[1]]
+	}.groupTuple(sort: true)
+	return(reshaped)
+}
