@@ -62,7 +62,7 @@ Un our HPC the cache folder for the singularity images is:
 But you can change it by editing the `nextflow.config` file at the section `singularity.cacheDir`
 
 
-## Upgrade
+## Update
 
 For upgrading the pipeline just run inside the `nf-tapestri` folder
 
@@ -79,7 +79,12 @@ Pipeline parameters are inside the `params.yaml` file:
 reads: "${projectDir}/test_data/*_read{1,2}.fastq.gz"
 genome: "${projectDir}/anno/GRCh37.p13.genome.fa.gz"
 panel: "${projectDir}/anno/panel_info.bed" 
-ampli: "${projectDir}/anno/CO-200.zip"
+# ampli can be "" in case of cellfinder_scTAMseq.R and it will take the 4th column of the panel file
+#ampli: "${projectDir}/anno/Control_amplicons_cell_lines.csv"
+ampli: ""
+# cellfinder can be cellfinder_scTAMseq.R / cellfinder_MCL_HC.R 
+cellfinder: "cellfinder_scTAMseq.R" 
+nreads: 100000
 hook: ""
 email: ""
 output: "${projectDir}/outfolder"
