@@ -95,8 +95,8 @@ process make_target_counts {
 
 process join_headers {
 
-	container 'biocorecrg/tapestri:2.0.1'
-    label (params.LABEL)
+        container 'biocorecrg/doubletdetection:0.1'
+        label (params.LABEL)
  	tag("${sampleID}")
 	
 	input:
@@ -109,7 +109,7 @@ process join_headers {
 	"""
 		grep "@HD" headers_1 > header.sam 
 		grep "@SQ" headers_1 >> header.sam 
-		grep "@RG" headers_* --no-filename >> header.sam 
+		grep "@RG" headers_* --no-filename | huniq  >> header.sam 
  	"""
 
 
@@ -190,6 +190,25 @@ process cellfinder_MCL {
         script:
         """
         cellfinder_MCL_HC.R -f ${input} -a ${amplifile} ${params.EXTRAPARS} -o ./${sampleID}.barcode.cell.distribution.tsv
+        """
+
+}
+
+process doubletDetection {
+
+        container 'biocorecrg/doubletdetection:0.1'
+        label (params.LABEL)
+        tag("${sampleID}")
+
+        input:
+        tuple val(sampleID), path(barcode_distrib)
+
+        output:
+        tuple val(sampleID), path("${sampleID}_doublet_scores_DoubletDetection.csv")
+
+        script:
+        """
+        DoubletDetection.py --input ${barcode_distrib} --output ${sampleID}_doublet_scores_DoubletDetection.csv
         """
 
 }

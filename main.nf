@@ -60,6 +60,7 @@ include { barcode_extract } from "${localModule}" addParams(EXTRAPARS:progPars["
 include { make_target_counts } from "${localModule}" addParams(LABEL: "big_cpus")
 include { make_minus_5panel } from "${localModule}"
 include { make_distribution } from "${localModule}"
+include { doubletDetection } from "${localModule}"
 include { ectractAmpliconsFromPanelInfo } from "${localModule}"
 include { publishRes; reshape; join_headers } from "${localModule}"
 
@@ -114,21 +115,25 @@ workflow {
     make_target_counts(index_reads)
     distros = make_distribution(index_reads.combine(m5panel))
     distrib = channel.empty()
-    if ( params.ampli == "") {
-        ampli_file = ectractAmpliconsFromPanelInfo(panel_file) 
-    } else {
-         Channel.fromPath( params.ampli )
-         .ifEmpty { error "Cannot find any ampli file ${params.ampli}" }.set { ampli_file }
-    }
-
     switch(params.cellfinder) {
         case "cellfinder_MCL_HC.R":
+            Channel.fromPath( params.ampli )
+            .ifEmpty { error "Cannot find any ampli file ${params.ampli}" }.set { ampli_file }
             distrib = cellfinder_MCL(distros.dist_read1.combine(ampli_file))
             break;
         case "cellfinder_scTAMseq.R":
+            if ( params.ampli == "") {
+                ampli_file = ectractAmpliconsFromPanelInfo(panel_file) 
+            } else {
+                Channel.fromPath( params.ampli )
+                .ifEmpty { error "Cannot find any ampli file ${params.ampli}" }.set { ampli_file }      
+            }
             distrib = cellfinder_scTAM(distros.dist_read1.combine(ampli_file))
             break;
     }
+    
+    doublets = doubletDetection(distrib)
+    doublets.view()
     
     // collect results and publish using a custom output
     all_res = sorted_jaln.mix(indexes).mix(distros.dist_read1).mix(distrib).groupTuple().map{
