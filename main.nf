@@ -59,13 +59,13 @@ include { final_message; notify_slack } from "${moduleFolder}/global_functions.n
 include { barcode_extract } from "${localModule}" addParams(EXTRAPARS:progPars["tapestri-barcode-extract"], LABEL: "big_cpus")
 include { make_target_counts } from "${localModule}" addParams(LABEL: "big_cpus")
 include { make_minus_5panel } from "${localModule}"
-include { make_distribution } from "${localModule}"
+include { make_distribution } from "${localModule}" addParams(LABEL: "big_mem_time")
 include { doubletDetection } from "${localModule}"
 include { ectractAmpliconsFromPanelInfo } from "${localModule}"
 include { publishRes; reshape; join_headers } from "${localModule}"
 
-include { cellfinder_MCL } from "${localModule}" addParams( EXTRAPARS:progPars["cellfinder_MCL_HC.R"] )
-include { cellfinder_scTAM } from "${localModule}" addParams( EXTRAPARS:progPars["cellfinder_scTAMseq.R"] )
+include { cellfinder_MCL } from "${localModule}" addParams( EXTRAPARS:progPars["cellfinder_MCL_HC.R"], LABEL: "big_mem_time" )
+include { cellfinder_scTAM } from "${localModule}" addParams( EXTRAPARS:progPars["cellfinder_scTAMseq.R"], LABEL: "big_mem_time")
 
 include { INDEX as BWA_INDEX } from "${moduleFolder}/alignment/bwa" addParams(CONTAINER:"biocorecrg/tapestri:2.0.1")
 
