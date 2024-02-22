@@ -1,0 +1,14 @@
+# This will do biocorecrg/doubletdetection:0.1
+FROM python:3.7
+
+# File Author / Maintainer
+LABEL org.opencontainers.image.authors="Luca Cozzuto <lucacozzuto@gmail.com>" 
+
+#upgrade pip
+RUN apt-get update
+RUN apt install build-essential 
+RUN pip3 install --upgrade pip
+RUN pip3 install --upgrade setuptools wheel
+RUN pip3 install leidenalg
+RUN pip3 install doubletdetection 
+#pandas argparse
