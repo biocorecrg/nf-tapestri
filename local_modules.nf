@@ -226,8 +226,9 @@ process publishRes() {
 
         script:
         """
-			mkdir ${sampleID}
-			mv ${files} ./${sampleID}
+		mkdir ${sampleID}
+		mv ${files} ./${sampleID}
+	        for i in ${sampleID}/.txt; do gzip \$i; done       		
         """
 
 }

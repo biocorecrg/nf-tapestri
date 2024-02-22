@@ -64,8 +64,8 @@ include { doubletDetection } from "${localModule}"
 include { ectractAmpliconsFromPanelInfo } from "${localModule}"
 include { publishRes; reshape; join_headers } from "${localModule}"
 
-include { cellfinder_MCL } from "${localModule}" addParams( EXTRAPARS:progPars["cellfinder_MCL_HC.R"], LABEL: "big_mem_time" )
-include { cellfinder_scTAM } from "${localModule}" addParams( EXTRAPARS:progPars["cellfinder_scTAMseq.R"], LABEL: "big_mem_time")
+include { cellfinder_MCL } from "${localModule}" addParams( EXTRAPARS:progPars["cellfinder_MCL_HC.R"], LABEL: "big_mem" )
+include { cellfinder_scTAM } from "${localModule}" addParams( EXTRAPARS:progPars["cellfinder_scTAMseq.R"], LABEL: "big_mem")
 
 include { INDEX as BWA_INDEX } from "${moduleFolder}/alignment/bwa" addParams(CONTAINER:"biocorecrg/tapestri:2.0.1")
 
