@@ -56,7 +56,7 @@ sh INSTALL.sh $user $password $path
 Un our HPC the cache folder for the singularity images is:
 
 ```
-/software/bi/biocore_tools/singularity_containers/
+/users/bi/public-docs/projects/tapestri/biocorecrg-tapestri-2.0.1.img
 ```
 
 But you can change it by editing the `nextflow.config` file at the section `singularity.cacheDir`
