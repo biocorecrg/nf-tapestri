@@ -42,15 +42,13 @@ output (output folder)      : ${params.output}
 
 if (params.resume) exit 1, "Are you making the classical --resume typo? Be careful!!!! ;)"
 
-moduleFolder   = "${projectDir}/BioNextflow/subworkflows"
+moduleFolder   = "${projectDir}/../BioNextflow/subworkflows"
 multiQC_conf   = Channel.fromPath("${projectDir}/config.yaml")
-localModule    = "${projectDir}/local_modules.nf"
+localModule    = "${projectDir}/../local_modules.nf"
 tools_opt      = "${projectDir}/tools_opt.tsv"
-//adapters       = "${projectDir}/adapters.txt"
 
 
 outputfolder     = "${params.output}"
-outputAlignments = "${params.output}/bam"
 
 include { getParameters } from "${localModule}"
 progPars = getParameters(tools_opt)

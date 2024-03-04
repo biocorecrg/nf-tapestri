@@ -228,7 +228,8 @@ process publishRes() {
         """
 		mkdir ${sampleID}
 		mv ${files} ./${sampleID}
-	        for i in ${sampleID}/.txt; do gzip \$i; done       		
+	        for i in ${sampleID}/*.txt; do cat \$i | gzip -c > ${sampleID}/`basename \$i`.gz; done
+		rm ${sampleID}/*.txt      		
         """
 
 }
@@ -240,4 +241,54 @@ def reshape(mychannel) {
 		[id, it[1]]
 	}.groupTuple(sort: true)
 	return(reshaped)
+}
+
+process protein_run {
+	//publishDir params.output, mode: 'copy'
+	container 'biocorecrg/tapestri:2.0.1'
+    label (params.LABEL)
+	tag("${sampleID}")
+	
+	input:
+	tuple val(sampleID), path(reads), path(adapter3), path(adapter5), path(ab_barcodes)
+
+	output:
+	tuple val(sampleID), path("${sampleID}/results/tsv/${sampleID}-counts.tsv"), emit: out  
+
+	script:
+	
+	def readsA = reads[0]
+	def readsB = reads[1]
+	
+	"""
+	tapestri protein run ${params.EXTRAPARS} \
+		--ab-adapters-3 ${adapter3} \
+		--ab-adapters-5 ${adapter5} \
+		--ab-barcodes ${ab_barcodes} \
+		--output-folder ./${sampleID} \
+		--output-prefix ${sampleID} \
+		--n-cores ${task.cpus} \
+		--r1 ${readsA} \
+		--r2 ${readsB}
+	"""
+
+}
+
+process combine_prot_res {
+	publishDir params.output, mode: 'copy'
+	container 'biocorecrg/tapestri:2.0.1'
+    label (params.LABEL)
+	tag("${sampleID}")
+	
+	input:
+	tuple val(sampleID), path(res)
+
+	output:
+	tuple val(sampleID), path("${sampleID}-counts.tsv"), emit: out  
+
+	script:	
+	"""
+	combineRes.py -f "*.tsv" -o ${sampleID}-counts.tsv
+	"""
+
 }

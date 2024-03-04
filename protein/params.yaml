@@ -1,0 +1,9 @@
+# Parameters
+reads: "${projectDir}/small_data/*_R{1,2}_001.fastq.gz"
+adapt3: "${projectDir}/anno/ab_adapters_3.fasta"
+adapt5: "${projectDir}/anno/ab_adapters_5.fasta"
+ab_barcode: "${projectDir}/anno/totalseq-d-heme-oncology-CD27.csv"
+nreads: 50000
+hook: ""
+email: ""
+output: "${projectDir}/outfolder"
