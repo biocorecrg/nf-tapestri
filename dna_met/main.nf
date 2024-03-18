@@ -134,7 +134,7 @@ workflow {
     doublets.view()
     
     // collect results and publish using a custom output
-    all_res = sorted_jaln.mix(indexes).mix(distros.dist_read1).mix(distrib).groupTuple().map{
+    all_res = sorted_jaln.mix(indexes).mix(doublets).mix(distros.dist_read1).mix(distrib).groupTuple().map{
 		def name = it[0].split('_')[0]
     	[name, it[1]]
     }
