@@ -66,9 +66,14 @@ include { cellfinder_MCL } from "${localModule}" addParams( EXTRAPARS:progPars["
 include { cellfinder_scTAM } from "${localModule}" addParams( EXTRAPARS:progPars["cellfinder_scTAMseq.R"], LABEL: "big_mem")
 
 include { INDEX as BWA_INDEX } from "${moduleFolder}/alignment/bwa" addParams(CONTAINER:"biocorecrg/tapestri:2.0.1")
+include { FASTQCP as FASTQC_QC } from "${moduleFolder}/qc/fastqc" 
+include { REPORT as MULTIQC_REPORT  } from "${moduleFolder}/reporting/multiqc" addParams(OUTPUT: "${outputfolder}/report/")
 
 include { CAT as SAMTOOLS_CAT } from "${moduleFolder}/misc/samtools" addParams(LABEL: "big_cpus")
 include { SORT as SAMTOOLS_SORT } from "${moduleFolder}/misc/samtools" addParams(LABEL: "big_cpus")
+include { STAT as SAMTOOLS_FLAGSTAT } from "${moduleFolder}/misc/samtools" addParams(LABEL: "big_cpus")
+
+
 include { map_with_params as bwa_map } from "${moduleFolder}/alignment/bwa" addParams(CONTAINER:"biocorecrg/tapestri:2.0.1", EXTRAPARS:progPars["bwa"], LABEL: "big_cpus")
 include { BVIEW as SAMTOOLS_VIEW } from "${moduleFolder}/misc/samtools" addParams(CONTAINER:"biocorecrg/tapestri:2.0.1", EXTRAPARS:progPars["samtools"], LABEL: "big_cpus")
 include { BVIEW as SAMTOOLS_GET_HEADER } from "${moduleFolder}/misc/samtools" addParams(CONTAINER:"biocorecrg/tapestri:2.0.1", EXTRAPARS: " -H ", LABEL: "big_cpus")
@@ -85,6 +90,8 @@ Channel.fromPath( params.panel )
 
 
 workflow {
+    data_for_reporting = FASTQC_QC(ori_read_files)
+    
 	ori_read_files.splitFastq( by: params.nreads, pe: true, file: true, compress:true ).map{
 		num = "${it[1]}".split("\\.")[-3]
 		[ "${it[0]}---${num}", [ it[1], it[2] ] ]
@@ -103,12 +110,14 @@ workflow {
 	data_2_cat = reshape(fixed).join(sam_header)
 
     jaln_reads = SAMTOOLS_CAT(data_2_cat)
-	sorted_jaln = SAMTOOLS_SORT(jaln_reads)
-	//sorted_jaln.view()
-	
+	sorted_jaln = SAMTOOLS_SORT(jaln_reads)	
     indexes = SAMTOOLS_INDEX(sorted_jaln)
+
     m5panel = make_minus_5panel(panel_file)
     index_reads = sorted_jaln.join(indexes) 
+    
+    aln_stats = SAMTOOLS_FLAGSTAT(index_reads)
+	aln_stats.view()
 
     make_target_counts(index_reads)
     distros = make_distribution(index_reads.combine(m5panel))
@@ -131,7 +140,9 @@ workflow {
     }
     
     doublets = doubletDetection(distrib)
-    doublets.view()
+    data_for_reporting.collect().view()
+    
+	MULTIQC_REPORT(data_for_reporting.collect())
     
     // collect results and publish using a custom output
     all_res = sorted_jaln.mix(indexes).mix(doublets).mix(distros.dist_read1).mix(distrib).groupTuple().map{
