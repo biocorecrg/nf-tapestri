@@ -1,4 +1,4 @@
-# This will do biocorecrg/tapestri_R:0.1
+# This will do biocorecrg/tapestri_r:0.0.2 
 FROM biocorecrg/centos-perlbrew-pyenv-java
 
 # File Author / Maintainer
@@ -15,8 +15,7 @@ RUN yum install epel-release libxml2-devel libcurl-devel -y
 RUN yum install R-${R_VERSION} -y
 RUN mkdir -p /usr/share/doc/R-${R_VERSION}/html
 
-
-RUN Rscript -e "install.packages(c('argparse'), repos='http://cran.us.r-project.org')"
+RUN Rscript -e "install.packages(c('argparse', 'ggplot2'), repos='http://cran.us.r-project.org')"
 
 
  

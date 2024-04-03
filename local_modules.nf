@@ -215,7 +215,7 @@ process doubletDetection {
 
 process reads_per_cell {
 
-        container 'biocorecrg/tapestri_r:0.0.1'
+        container 'biocorecrg/tapestri_r:0.0.2'
         label (params.LABEL)
         tag("${sampleID}")
 
