@@ -58,14 +58,15 @@ include { barcode_extract } from "${localModule}" addParams(EXTRAPARS:progPars["
 include { make_target_counts } from "${localModule}" addParams(LABEL: "big_cpus")
 include { make_minus_5panel } from "${localModule}"
 include { make_distribution } from "${localModule}" addParams(LABEL: "big_mem_time")
-include { doubletDetection } from "${localModule}"
+include { doubletDetection } from "${localModule}" addParams(LABEL: "ignore")
 include { ectractAmpliconsFromPanelInfo } from "${localModule}"
 include { publishRes; reshape; join_headers } from "${localModule}"
 
 include { cellfinder_MCL } from "${localModule}" addParams( EXTRAPARS:progPars["cellfinder_MCL_HC.R"], LABEL: "big_mem" )
 include { cellfinder_scTAM } from "${localModule}" addParams( EXTRAPARS:progPars["cellfinder_scTAMseq.R"], LABEL: "big_mem")
+include { reads_per_cell } from "${localModule}" addParams ( LABEL: "big_mem" )
 
-include { INDEX as BWA_INDEX } from "${moduleFolder}/alignment/bwa" addParams(CONTAINER:"biocorecrg/tapestri:2.0.1")
+include { INDEX as BWA_INDEX } from "${moduleFolder}/alignment/bwa" addParams(STOREINDEX:"${outputfolder}/index", CONTAINER:"biocorecrg/tapestri:2.0.1")
 include { FASTQCP as FASTQC_QC } from "${moduleFolder}/qc/fastqc" 
 include { REPORT as MULTIQC_REPORT  } from "${moduleFolder}/reporting/multiqc" addParams(OUTPUT: "${outputfolder}/report/")
 
@@ -92,10 +93,12 @@ Channel.fromPath( params.panel )
 workflow {
     data_for_reporting = FASTQC_QC(ori_read_files)
     
-	ori_read_files.splitFastq( by: params.nreads, pe: true, file: true, compress:true ).map{
-		num = "${it[1]}".split("\\.")[-3]
-		[ "${it[0]}---${num}", [ it[1], it[2] ] ]
-	}.set{read_files}
+    ori_read_files.splitFastq( by: params.nreads, pe: true, file: true, compress:true ).map{
+        num = "${it[1]}".split("\\.")[-3]
+        [ "${it[0]}---${num}", [ it[1], it[2] ] ]
+    }.set{read_files}
+    read_files.view()
+    
     index = BWA_INDEX(params.genome)
     outbc = barcode_extract(read_files)
 
@@ -105,19 +108,18 @@ workflow {
     outmap = bwa_map(data_for_alignment, index)
     bams = SAMTOOLS_VIEW(outmap)
     fixed = PICARD_FIXMATE(bams)
-	fixed_headers = SAMTOOLS_GET_HEADER(fixed)
-	sam_header = join_headers(reshape(fixed_headers))
-	data_2_cat = reshape(fixed).join(sam_header)
+    fixed_headers = SAMTOOLS_GET_HEADER(fixed)
+    sam_header = join_headers(reshape(fixed_headers))
+    data_2_cat = reshape(fixed).join(sam_header)
 
     jaln_reads = SAMTOOLS_CAT(data_2_cat)
-	sorted_jaln = SAMTOOLS_SORT(jaln_reads)	
+    sorted_jaln = SAMTOOLS_SORT(jaln_reads) 
     indexes = SAMTOOLS_INDEX(sorted_jaln)
 
     m5panel = make_minus_5panel(panel_file)
     index_reads = sorted_jaln.join(indexes) 
     
-    aln_stats = SAMTOOLS_FLAGSTAT(index_reads)
-	aln_stats.view()
+    //aln_stats = SAMTOOLS_FLAGSTAT(sorted_jaln)
 
     make_target_counts(index_reads)
     distros = make_distribution(index_reads.combine(m5panel))
@@ -140,14 +142,18 @@ workflow {
     }
     
     doublets = doubletDetection(distrib)
-    data_for_reporting.collect().view()
+    data_for_plot = distrib.join(doublets).combine(ampli_file)
+        
+    read_plots = reads_per_cell(data_for_plot)
+
+    //data_for_reporting = data_for_reporting.mix(aln_stats.map{it[1]})
     
-	MULTIQC_REPORT(data_for_reporting.collect())
+    MULTIQC_REPORT(data_for_reporting.collect())
     
     // collect results and publish using a custom output
     all_res = sorted_jaln.mix(indexes).mix(doublets).mix(distros.dist_read1).mix(distrib).groupTuple().map{
-		def name = it[0].split('_')[0]
-    	[name, it[1]]
+        def name = it[0].split('_')[0]
+        [name, it[1]]
     }
     publishRes(all_res)
 

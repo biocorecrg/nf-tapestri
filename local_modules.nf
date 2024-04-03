@@ -95,8 +95,8 @@ process make_target_counts {
 
 process join_headers {
 
-        container 'biocorecrg/doubletdetection:0.1'
-        label (params.LABEL)
+    container 'biocorecrg/doubletdetection:0.1'
+    label (params.LABEL)
  	tag("${sampleID}")
 	
 	input:
@@ -212,6 +212,28 @@ process doubletDetection {
         """
 
 }
+
+process reads_per_cell {
+
+        container 'biocorecrg/tapestri_r:0.0.1'
+        label (params.LABEL)
+        tag("${sampleID}")
+
+        input:
+        tuple val(sampleID), path(barcode_distrib), path(doublets), path(amplifile)
+
+        output:
+        tuple val(sampleID), path("${sampleID}_*")
+ 
+        script:
+        """
+        plot_reads_per_cell.R --file ${barcode_distrib.cells} --doublet ${doublets} \
+                              --amplicon ${amplifile} --output ./ \
+                              --name ${sampleID}"
+        """
+
+}
+
 
 process publishRes() {
         publishDir params.output, mode: 'copy'

@@ -3,10 +3,11 @@ reads: "${projectDir}/real_data/*_R{1,2}_001.fastq.gz"
 genome: "${projectDir}/anno/GRCh37.p13.genome.fa.gz"
 panel: "/users/rbeekman/abianchi/test_pipeline/panel_info/dna_pipeline/panel_info.bed"
 # ampli can be "" in case of cellfinder_scTAMseq.R and it will take the 4th column of the panel file
-ampli: "/users/rbeekman/abianchi/test_pipeline/panel_info/dna_pipeline/Control_amplicons_100_HP_new_panel.csv"
+ampli: "/users/rbeekman/abianchi/test_pipeline/panel_info/dna_pipeline/for_cells_selection/Control_amplicons_all_NonHhaI.csv"
+##"/users/rbeekman/abianchi/test_pipeline/panel_info/dna_pipeline/Control_amplicons_100_HP_new_panel.csv"
 # cellfinder can be cellfinder_scTAMseq.R / cellfinder_MCL_HC.R 
 cellfinder: "cellfinder_scTAMseq.R" 
-nreads: 1000000
+nreads: 50000000
 hook: ""
 email: ""
-output: "${projectDir}/outfolder"
+output: "${projectDir}/outfolder2"
