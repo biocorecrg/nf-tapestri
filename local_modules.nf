@@ -227,9 +227,9 @@ process reads_per_cell {
  
         script:
         """
-        plot_reads_per_cell.R --file ${barcode_distrib.cells} --doublet ${doublets} \
+        plot_reads_per_cell.R --file ${barcode_distrib} --doublet ${doublets} \
                               --amplicon ${amplifile} --output ./ \
-                              --name ${sampleID}"
+                              --name ${sampleID}
         """
 
 }
