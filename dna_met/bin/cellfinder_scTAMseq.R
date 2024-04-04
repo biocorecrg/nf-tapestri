@@ -1,6 +1,6 @@
 #!/usr/bin/Rscript --vanilla
 
-library(argparse)
+require(argparse)
 ap <- ArgumentParser()
 ap$add_argument("-f", "--file", action="store", help="The barcode distribution file as output of the MissionBio pipeline (tsv)")
 ap$add_argument("-a", "--ampli", action="store", help="A file containing amplicons for cell selection")
@@ -10,7 +10,10 @@ opt <- ap$parse_args()
 
 # V1 tends to perform better for us
 vers.2 <- FALSE
+# cut off for amplicons detection
 val <- as.numeric(opt$cutoff)
+
+# modified cellfinder function from MISSION BIO
 resemble.cellfinder <- function(d){
   cut <- ifelse(vers.2,ncol(d) * 8,ncol(d) * 10)
   reads.per.cell <- apply(d,1,sum)
@@ -20,16 +23,18 @@ resemble.cellfinder <- function(d){
   thres <- ifelse(vers.2,0.2*m.ean,min(0.2*m.ean,10))
 }
 
-# List of amplicons for cell selection
+# Customized list of amplicons for cell selection
 ampli.list <- read.csv(opt$ampli,header=FALSE)
-sel.amplis <- ampli.list$V1
+sel.amplis <- as.character(ampli.list$V1)
 
-#selection cells
-dat.s3 <- read.table(opt$file,
+# Apply cell selection function
+data <- read.table(opt$file,
                      header = T)
-thres <- resemble.cellfinder(dat.s3[,sel.amplis])
-ful.cutoff <- dat.s3[,sel.amplis]>thres
+thres <- resemble.cellfinder(data[,sel.amplis])
+ful.cutoff <- data[,sel.amplis]>thres
 ful.perc <- apply(ful.cutoff,1,function(x)sum(x)/length(x))
-ful.perc.s3 <- ful.perc
-dat.s3 <- dat.s3[ful.perc.s3>val,]
-write.table(dat.s3,opt$output,sep='\t',quote = FALSE)
+data <- data[ful.perc > val,]
+# print number of cells and cut off used
+print(paste("Cells detected:", nrow(data),", with cutoff:", val, ", using", length(sel.amplis), "amplicons"))
+# save table with cells
+write.table(data, opt$output,sep='\t', quote = FALSE)
