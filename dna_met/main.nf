@@ -97,7 +97,6 @@ workflow {
         num = "${it[1]}".split("\\.")[-3]
         [ "${it[0]}---${num}", [ it[1], it[2] ] ]
     }.set{read_files}
-    read_files.view()
     
     index = BWA_INDEX(params.genome)
     outbc = barcode_extract(read_files)
@@ -145,16 +144,16 @@ workflow {
     data_for_plot = distrib.join(doublets).combine(ampli_file)
         
     read_plots = reads_per_cell(data_for_plot)
-
-    //data_for_reporting = data_for_reporting.mix(aln_stats.map{it[1]})
     
     MULTIQC_REPORT(data_for_reporting.collect())
     
     // collect results and publish using a custom output
-    all_res = sorted_jaln.mix(indexes).mix(doublets).mix(distros.dist_read1).mix(distrib).groupTuple().map{
+    all_res = sorted_jaln.mix(indexes).mix(doublets).mix(distros.dist_read1).mix(distrib).mix(read_plots.transpose()).groupTuple().map{
         def name = it[0].split('_')[0]
         [name, it[1]]
     }
+    
+    
     publishRes(all_res)
 
 }

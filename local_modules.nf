@@ -247,11 +247,21 @@ process publishRes() {
 
 
         script:
+        
         """
 		mkdir ${sampleID}
-		mv ${files} ./${sampleID}
-	        for i in ${sampleID}/*.txt; do cat \$i | gzip -c > ${sampleID}/`basename \$i`.gz; done
-		rm ${sampleID}/*.txt      		
+		mkdir ${sampleID}/output
+		mkdir ${sampleID}/intermediate
+		mkdir ${sampleID}/qc_log
+		mv *.bam* ./${sampleID}/intermediate
+		mv *_stats.txt ./${sampleID}/qc_log
+		mv *_metadata.csv ./${sampleID}/qc_log
+		mv *.png ./${sampleID}/qc_log
+		mv *.txt ./${sampleID}/intermediate
+		mv *.tsv ./${sampleID}/output
+
+	    for i in ${sampleID}/intermediate/*.txt; do cat \$i | gzip -c > ${sampleID}/intermediate/`basename \$i`.gz; done
+		rm ${sampleID}/intermediate/*.txt
         """
 
 }
