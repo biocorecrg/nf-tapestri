@@ -1,6 +1,3 @@
-//outputBarcode   = "${params.output}/barcode"
-//outputDist      = "${params.output}/distribution"
-
 params.EXTRAPARS = ""
 params.LABEL = ""
 
@@ -259,12 +256,15 @@ process publishRes() {
 		mv *.png ./${sampleID}/qc_log
 		mv *.txt ./${sampleID}/intermediate
 		mv *.tsv ./${sampleID}/output
-
+                mv *.csv ./${sampleID}/output
 	    for i in ${sampleID}/intermediate/*.txt; do cat \$i | gzip -c > ${sampleID}/intermediate/`basename \$i`.gz; done
 		rm ${sampleID}/intermediate/*.txt
         """
 
 }
+
+/*
+*/
 
 // reshape the channel
 def reshape(mychannel) {
@@ -324,3 +324,66 @@ process combine_prot_res {
 	"""
 
 }
+
+process cell_bam {
+//	publishDir params.OUTPUTDIR, mode: 'copy'
+	container 'biocorecrg/tapestri:2.0.1'
+    label (params.LABEL)
+	tag("${sampleID}")
+	
+	input:
+	tuple val(sampleID), path(input_cells), path(bam), path(bamid)
+
+	output:
+	tuple val(sampleID), path("${sampleID}.cells.bam"), emit: out  
+
+	script:	
+	"""
+    awk '{if (NR > 1) print \$1}' ${input_cells} > cells.txt
+    samtools view -@ ${task.cpus} -b -R cells.txt ${bam} > ${sampleID}.cells.bam
+	"""
+
+}
+
+
+process genotyping_split {
+
+	container 'biocorecrg/tapestri:2.0.1'
+    label (params.LABEL)
+	tag("${sampleID}")
+	
+	input:
+	tuple val(sampleID), path(bam), path(bamid)
+
+	output:
+	tuple val(sampleID), path("${sampleID}_bam"), emit: out  
+
+	script:	
+	"""
+       split_bam_by_barcode.py -i ${bam} -o ${sampleID}_bam -n ${task.cpus}
+	"""
+
+}
+
+process genotyping_haplotype {
+
+	container 'biocorecrg/tapestri:2.0.1'
+    label (params.LABEL)
+	tag("${sampleID}")
+	
+	input:
+	tuple val(sampleID), path(inputdir), path(bamid), path(config)
+
+	output:
+	tuple val(sampleID), path("${sampleID}_bam"), emit: out  
+
+	script:	
+	"""
+        gatk_haplotype_caller.py --input-dir ${inputdir} --output-dir ${output} --cores ${task.cpus} --config ${config} --prefix gatk
+	"""
+
+}
+
+
+
+
