@@ -55,6 +55,7 @@ include { genotyping_split } from localModule addParams(LABEL: 'big_cpus')
 include { INDEX as SAMTOOLS_INDEX } from "${moduleFolder}/misc/samtools" addParams(LABEL: "big_cpus")
 
 inputFiles = channel.fromPath(params.input, checkIfExists: true)
+gatk_config = channel.fromPath(params.gatk_config, checkIfExists: true)
 
 inputFiles.branch {
         bam: it =~ /\.bam$/
@@ -71,7 +72,9 @@ data_for_cell_bam = input_data.cells.join(input_data.bam).join(input_data.bai).v
 workflow {
 	bam_cells = cell_bam(data_for_cell_bam)
 	bai_cells = SAMTOOLS_INDEX(bam_cells)
-	genotyping_split(bam_cells.join(bai_cells))
+	sam_dir = genotyping_split(bam_cells.join(bai_cells))
+	genotyping_haplotype(sam_dir.join(gatk_config))
+
 }
 
 
