@@ -1,8 +1,11 @@
 # Parameters
 ## intput is the output produced by the dna_met pipeline
 input: "${projectDir}/test_data/**"
-gatk_config: ""
-trust4: "YES"
+genome: "${projectDir}/../anno/GRCh37.p13.genome.fa.gz"
+gatk_config: "${projectDir}/anno/gatk_config.yaml"
+panel: "/users/lvelten/project/Methylome/infos/MCL/panel_info.bed"
+amplicons: "/users/lvelten/project/Methylome/infos/MCL/panel_info.amplicons"
+#panel: "${projectDir}/anno/panel_info_filter_variant_calling.bed"
 hook: ""
 email: ""
 output: "${projectDir}/outfolder"
