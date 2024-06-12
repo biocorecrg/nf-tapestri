@@ -2,6 +2,7 @@
 ## intput is the output produced by the dna_met pipeline
 input: "${projectDir}/test_data/**"
 gatk_config: ""
+trust4: "YES"
 hook: ""
 email: ""
 output: "${projectDir}/outfolder"
