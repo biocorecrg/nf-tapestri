@@ -1,7 +1,2 @@
 #tool	extrapars
-tapestri-barcode-extract	"--chemistry dna.V2 --no-cut-adapters --decode --barcode-suffix -1"
-bwa	"-C -M"
-samtools	"-bh -q 30 -F 4 -F 8 -F 0X0100"
-picard	"SORT_ORDER=coordinate"
-cellfinder_MCL_HC.R	"-c 0.7"
-cellfinder_scTAMseq.R	""
+genotyping	"--all-sites --include-non-variant-sites --genomicsdb-use-vcf-codec --heterozygosity 0.001 --max-alternate-alleles 2"

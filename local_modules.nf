@@ -346,21 +346,29 @@ process cell_bam {
 }
 
 
-process genotyping_split {
+
+process genotyping_split_and_haplotype {
 
 	container 'biocorecrg/tapestri:2.0.1'
     label (params.LABEL)
 	tag("${sampleID}")
 	
 	input:
-	tuple val(sampleID), path(bam), path(bamid)
+	tuple val(sampleID), path(bam), path(bamid), path(gatkconfig_path), path(genome), path("panel_info.bed"), path("panel_info.amplicons"), path(faidx), path(dict)
 
 	output:
-	tuple val(sampleID), path("${sampleID}_bam"), emit: out  
+	tuple val(sampleID), path("${sampleID}_vcf"), emit: out  
 
 	script:	
 	"""
        split_bam_by_barcode.py -i ${bam} -o ${sampleID}_bam -n ${task.cpus}
+       
+      sed s@'REPLACE_GENOME_PATH'@${genome}@ ${gatkconfig_path} | \
+      sed s@'REPLACE_PANEL_INFO_BED'@panel_info.bed@  | \
+      sed --expression s@'REPLACE_MCL_PATH'@\$PWD@ > gatk_new_config.yaml
+      
+      gatk_haplotype_caller.py --input-dir ${sampleID}_bam --output-dir ${sampleID}_vcf --cores ${task.cpus} --config gatk_new_config.yaml --prefix gatk
+
 	"""
 
 }
@@ -372,16 +380,123 @@ process genotyping_haplotype {
 	tag("${sampleID}")
 	
 	input:
-	tuple val(sampleID), path(inputdir), path(bamid), path(config)
+	tuple val(sampleID), path(inputdir), path(gatkconfig_path), path(genome), path(panelinfo), path(faidx), path(dict)
 
 	output:
-	tuple val(sampleID), path("${sampleID}_bam"), emit: out  
+	tuple val(sampleID), path("${sampleID}_vcf"), emit: out  
 
 	script:	
+    
 	"""
-        gatk_haplotype_caller.py --input-dir ${inputdir} --output-dir ${output} --cores ${task.cpus} --config ${config} --prefix gatk
+      sed s@'REPLACE_GENOME_PATH'@${genome}@ ${gatkconfig_path} | \
+      sed s@'REPLACE_PANEL_INFO_BED'@${panelinfo}@  | \
+      sed --expression s@'REPLACE_MCL_PATH'@\$PWD@ > gatk_new_config.yaml
+      ln -s ${panelinfo} ${panelinfo.baseName}.amplicons 
+      gatk_haplotype_caller.py --input-dir ${inputdir} --output-dir ${sampleID}_vcf --cores ${task.cpus} --config gatk_new_config.yaml --prefix gatk
+
 	"""
 
+}
+
+/*
+*/
+process genotyping_import {
+
+	container 'biocorecrg/tapestri:2.0.1'
+    label (params.LABEL)
+	tag("${sampleID}")
+	
+	input:
+	tuple val(sampleID), path(vcf_folder), path(panel)
+
+	output:
+	tuple val(sampleID), path("${sampleID}_gendb"), emit: out  
+
+	script:
+    
+	"""
+        call_string=""
+        for f in ${vcf_folder}/*.vcf.gz; do
+                call_string+=" --variant \$f"
+        done ;
+        gatk GenomicsDBImport \$call_string --genomicsdb-workspace-path ${sampleID}_gendb --intervals ${panel} --merge-input-intervals --batch-size 150  
+	"""
+
+}
+
+/*
+*/
+process genotyping {
+
+	container 'biocorecrg/tapestri:2.0.1'
+    label (params.LABEL)
+	tag("${sampleID}")
+	
+	input:
+	tuple val(sampleID), path(db_folder), path(genome), path(fai), path(dict), path(panel)
+
+	output:
+	tuple val(sampleID), path("${sampleID}.combined.vcf"), emit: out  
+
+	script:
+    
+	"""
+        export JAVA_OPTIONS="-Xmx${task.memory.toGiga()/2}g"
+        alias java="java -Xmx${task.memory.toGiga()/2}g" ;
+        gatk GenotypeGVCFs --java-options "-Xmx${task.memory.toGiga()}g -XX:ParallelGCThreads=${task.cpus}" -R ${genome} ${params.EXTRAPARS} -V gendb://${db_folder} -L ${panel} -O ${sampleID}.combined.vcf
+
+ 	"""
+
+}
+
+/*
+*/
+process create_loom {
+
+	container 'biocorecrg/tapestri:2.0.1'
+    label (params.LABEL)
+	tag("${sampleID}")
+	
+	input:
+	tuple val(sampleID), path(vcf), path(metadata), path(panel_bed) 
+
+	output:
+	tuple val(sampleID), path("${sampleID}.dna.loom")
+
+	script:
+	"""
+        printf "genome:\n version: hg19" > params.yaml ;
+        vcf_to_loom.py \
+        params.yaml \
+        ${panel_bed} \
+        ${metadata} \
+        ${vcf} \
+        ${sampleID}.dna.loom \
+        --logfile log.txt 
+ 	"""
+
+}
+
+
+
+process changeGATKconfig {
+
+	//publishDir params.output, mode: 'copy'
+	container 'biocorecrg/tapestri:2.0.1'
+	
+	input:
+	tuple path(gatkconfig_path), path(genome), val(panelinfo)
+
+	output:
+	path("gatk_new_config.yaml")
+
+	script:
+	def panel_path = file(panelinfo).getParent()
+	
+	"""
+       sed s@'REPLACE_GENOME_PATH'@${genome}@ ${gatkconfig_path} | \
+       sed s@'REPLACE_PANEL_INFO_BED'@${panelinfo}@ > gatk_new_config.yaml
+	"""
 }
 
 
