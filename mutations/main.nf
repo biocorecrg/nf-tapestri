@@ -103,7 +103,7 @@ workflow {
 	vcf = genotyping(geno_out.combine(checked_genome).combine(faidx).combine(dict).combine(panel))
     vcf_data = vcf.join(input_data.metadata).combine(panel)
     vcf_data.view()
-	create_loom(vcf_data)
+//	create_loom(vcf_data)
 	
 }
 
