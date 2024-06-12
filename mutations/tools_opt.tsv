@@ -1,0 +1,2 @@
+#tool	extrapars
+genotyping	"--all-sites --include-non-variant-sites --genomicsdb-use-vcf-codec --heterozygosity 0.001 --max-alternate-alleles 2"
