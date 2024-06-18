@@ -1,5 +1,6 @@
 params.EXTRAPARS = ""
 params.LABEL = ""
+params.OUTPUT = ""
 
 // Create a channel for tool options
 def getParameters(pars_tools_file) {
@@ -436,16 +437,18 @@ process genotyping {
 	tuple val(sampleID), path(db_folder), path(genome), path(fai), path(dict), path(panel)
 
 	output:
-	tuple val(sampleID), path("${sampleID}.combined.vcf"), emit: out  
+	tuple val(sampleID), path("${sampleID}.combined.vcf.gz"), emit: out  
 
 	script:
     
 	"""
-        export JAVA_OPTIONS="-Xmx${task.memory.toGiga()/2}g"
-        alias java="java -Xmx${task.memory.toGiga()/2}g" ;
-        gatk GenotypeGVCFs --java-options "-Xmx${task.memory.toGiga()}g -XX:ParallelGCThreads=${task.cpus}" -R ${genome} ${params.EXTRAPARS} -V gendb://${db_folder} -L ${panel} -O ${sampleID}.combined.vcf
+	cp /nfs/scratch01/bi/luca/tap_workaround/${sampleID}.combined.vcf .
+	bgzip ${sampleID}.combined.vcf	
 
  	"""
+//        export JAVA_OPTIONS="-Xmx${task.memory.toGiga()/2}g"
+//        alias java="java -Xmx${task.memory.toGiga()/2}g" ;
+//        gatk GenotypeGVCFs --java-options "-Xmx${task.memory.toGiga()/2}g -XX:ParallelGCThreads=${task.cpus}" -R ${genome} ${params.EXTRAPARS} -V gendb://${db_folder} -L ${panel} -O ${sampleID}.combined.vcf
 
 }
 
@@ -453,27 +456,56 @@ process genotyping {
 */
 process create_loom {
 
+	publishDir params.OUTPUT, mode: 'copy'
+
 	container 'biocorecrg/tapestri:2.0.1'
     label (params.LABEL)
 	tag("${sampleID}")
 	
 	input:
-	tuple val(sampleID), path(vcf), path(metadata), path(panel_bed) 
+	tuple val(sampleID), path(gzvcf), path(metadata), path(panel_bed) 
 
 	output:
 	tuple val(sampleID), path("${sampleID}.dna.loom")
 
 	script:
 	"""
-        printf "genome:\n version: hg19" > params.yaml ;
+	    mkdir tmp
+        printf "genome:\n %s version: hg19" > ./tmp/hg19.yaml ;
         vcf_to_loom.py \
-        params.yaml \
+        ./tmp/hg19.yaml \
         ${panel_bed} \
         ${metadata} \
-        ${vcf} \
+        <(zcat ${gzvcf}) \
         ${sampleID}.dna.loom \
         --logfile log.txt 
  	"""
+
+}
+
+process create_h5 {
+	publishDir params.OUTPUT, mode: 'copy'
+
+	container 'biocorecrg/tapestri:2.0.1'
+    label (params.LABEL)
+	tag("${sampleID}")
+	
+	input:
+	tuple val(sampleID), path(bgvcf), path(cells), path(loom) 
+
+	output:
+	tuple val(sampleID), path("${sampleID}.dna.h5")
+
+	script:
+	"""
+        printf "{\n \\"sample_name\\": \\"${sampleID}\\",\n \\"pipeline_version\\": \\"2.0.1\\",\n \\"genome_version\\": \\"hg19\\",\n \\"panel_name\\": \\"MCL\\",\n \\"n_amplicons\\": 910,\n \\"chemistry_version\\": \\"V2\\"\n}" > metadata.json ;
+        tapestri h5 create dna \
+        --vcf ${bgvcf} \
+        --read-counts ${cells} \
+        --metadata metadata.json \
+        --output ${sampleID}.dna.h5 ;
+ 	"""
+
 
 }
 
@@ -495,10 +527,4 @@ process changeGATKconfig {
 	
 	"""
        sed s@'REPLACE_GENOME_PATH'@${genome}@ ${gatkconfig_path} | \
-       sed s@'REPLACE_PANEL_INFO_BED'@${panelinfo}@ > gatk_new_config.yaml
-	"""
-}
-
-
-
-
+       sed s@'REPLACE_PANEL_INFO_BED'@${panel
