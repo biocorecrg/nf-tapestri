@@ -47,6 +47,9 @@ localModule    = "${projectDir}/../local_modules.nf"
 tools_opt      = "${projectDir}/tools_opt.tsv"
 outputfolder   = "${params.output}"
 
+outputH5       = "${params.output}/H5"
+outputHLoom       = "${params.output}/loom"
+
 include { getParameters } from "${localModule}"
 progPars = getParameters(tools_opt)
 
@@ -64,8 +67,8 @@ include { DICT as SAMTOOLS_DICT } from "${moduleFolder}/misc/samtools" addParams
 
 include { genotyping_import } from localModule addParams(LABEL: 'big_mem') 
 include { genotyping } from localModule addParams(EXTRAPARS:progPars["genotyping"], LABEL: "big_mem_time")
-include { create_loom } from localModule addParams(LABEL: "big_mem_time")
-
+include { create_loom } from localModule addParams(LABEL: "big_mem_time", OUTPUT: outputHLoom)
+include { create_h5 } from localModule addParams(LABEL: "big_mem_time", OUTPUT: outputH5)
 
 inputFiles = channel.fromPath(params.input, checkIfExists: true)
 genome = channel.fromPath(params.genome, checkIfExists: true)
@@ -87,7 +90,6 @@ inputFiles.branch {
 
 data_for_cell_bam = input_data.cells.join(input_data.bam).join(input_data.bai)
 
-data_for_cell_bam.view()
 
 
 workflow {
@@ -102,10 +104,12 @@ workflow {
     geno_out = genotyping_import(vcf_dir.combine(panel))
 	vcf = genotyping(geno_out.combine(checked_genome).combine(faidx).combine(dict).combine(panel))
     vcf_data = vcf.join(input_data.metadata).combine(panel)
-    vcf_data.view()
-//	create_loom(vcf_data)
+	loom = create_loom(vcf_data)
+	data_forh5 = vcf.join(input_data.cells).join(loom)	
+	create_h5(data_forh5)
 	
 }
+
 
 
 
