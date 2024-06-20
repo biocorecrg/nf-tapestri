@@ -232,6 +232,35 @@ process reads_per_cell {
 
 }
 
+process filter_cells {
+
+        container 'biocorecrg/tapestri_r:0.0.3'
+        label (params.LABEL)
+        tag("${sampleID}")
+
+        input:
+        tuple val(sampleID), path(barcode_distrib), path(doublets), path(amplifile), path(CpG_unmeth) 
+
+        output:
+        tuple val(sampleID), path("${sampleID}.barcode.cell.distribution_filtered.tsv"), emit: filtered
+        tuple val(sampleID), path("*.pdf"), emit: pdfs
+ 
+        script:
+        """
+             create.object.QC.MB.pipeline.R ${sampleID} \
+             ${barcode_distrib} \
+             ${doublets} \
+             ./ \
+             ${amplifile} \
+             ${CpG_unmeth} 
+        """
+
+}
+
+
+
+
+
 
 process publishRes() {
         publishDir params.output, mode: 'copy'
@@ -251,13 +280,15 @@ process publishRes() {
 		mkdir ${sampleID}/output
 		mkdir ${sampleID}/intermediate
 		mkdir ${sampleID}/qc_log
+		mkdir ${sampleID}/plots
+		mv *.pdf ${sampleID}/plots
 		mv *.bam* ./${sampleID}/intermediate
 		mv *_stats.txt ./${sampleID}/qc_log
 		mv *_metadata.csv ./${sampleID}/qc_log
 		mv *.png ./${sampleID}/qc_log
 		mv *.txt ./${sampleID}/intermediate
 		mv *.tsv ./${sampleID}/output
-                mv *.csv ./${sampleID}/output
+        mv *.csv ./${sampleID}/output
 	    for i in ${sampleID}/intermediate/*.txt; do cat \$i | gzip -c > ${sampleID}/intermediate/`basename \$i`.gz; done
 		rm ${sampleID}/intermediate/*.txt
         """
@@ -527,4 +558,10 @@ process changeGATKconfig {
 	
 	"""
        sed s@'REPLACE_GENOME_PATH'@${genome}@ ${gatkconfig_path} | \
-       sed s@'REPLACE_PANEL_INFO_BED'@${panel
+       sed s@'REPLACE_PANEL_INFO_BED'@${panelinfo}@ > gatk_new_config.yaml
+	"""
+}
+
+
+
+

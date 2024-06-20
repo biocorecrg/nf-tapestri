@@ -1,0 +1,17 @@
+# This will do biocorecrg/tapestri_r:0.0.3
+FROM satijalab/seurat:5.0.0
+
+# File Author / Maintainer
+MAINTAINER Luca Cozzuto <lucacozzuto@gmail.com> 
+#
+#
+
+# Install R and R packages
+RUN apt-get update ; apt install -y libgdal-dev
+
+RUN Rscript -e "install.packages(c('argparse', 'remote'), repos='http://cran.us.r-project.org')"
+RUN Rscript -e "library('remotes'); install_version('ggplot2', version = '3.5.1', upgrade='always')"
+
+RUN Rscript -e "install.packages(c('tidyr', 'SeuratObject', 'ggpubr', 'dplyr', 'tidyverse', 'reshape2', 'seurat'), repos='http://cran.us.r-project.org')"
+
+

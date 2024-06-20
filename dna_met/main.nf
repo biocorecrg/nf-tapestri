@@ -34,6 +34,7 @@ genome                      : ${params.genome}
 panel                       : ${params.panel}
 ampli                       : ${params.ampli}
 cellfinder                  : ${params.cellfinder}
+CpG_unmeth                  : ${params.CpG_unmeth}
 nreads                      : ${params.nreads}
 email                       : ${params.email}
 output (output folder)      : ${params.output}
@@ -64,6 +65,8 @@ include { publishRes; reshape; join_headers } from "${localModule}"
 include { cellfinder_MCL } from "${localModule}" addParams( EXTRAPARS:progPars["cellfinder_MCL_HC.R"], LABEL: "big_mem" )
 include { cellfinder_scTAM } from "${localModule}" addParams( EXTRAPARS:progPars["cellfinder_scTAMseq.R"], LABEL: "big_mem")
 include { reads_per_cell } from "${localModule}" addParams ( LABEL: "big_mem" )
+include { filter_cells } from "${localModule}" addParams ( LABEL: "big_mem" )
+
 
 include { INDEX as BWA_INDEX } from "${moduleFolder}/alignment/bwa" addParams(STOREINDEX:"${outputfolder}/index", CONTAINER:"biocorecrg/tapestri:2.0.1")
 include { FASTQCP as FASTQC_QC } from "${moduleFolder}/qc/fastqc" 
@@ -88,6 +91,10 @@ Channel.fromPath( params.panel )
 .ifEmpty { error "Cannot find any panel file ${params.panel}" }
 .set { panel_file }    
 
+Channel.fromPath ( params.CpG_unmeth )
+.ifEmpty { error "Cannot find any CpG_unmeth file ${params.CpG_unmeth}" }
+.set { CpG_unmeth }
+
 
 workflow {
     data_for_reporting = FASTQC_QC(ori_read_files)
@@ -96,7 +103,6 @@ workflow {
         num = "${it[1]}".split("\\.")[-3]
         [ "${it[0]}---${num}", [ it[1], it[2] ] ]
     }.set{read_files}
-    read_files.view()
     
     index = BWA_INDEX(params.genome)
     outbc = barcode_extract(read_files)
@@ -145,10 +151,16 @@ workflow {
         
     read_plots = reads_per_cell(data_for_plot)
     
+    data_for_filtering = distrib.join(doublets).combine(ampli_file).combine(CpG_unmeth)
+
+    filtered_res = filter_cells(data_for_filtering)  
+    filtered_cells = filtered_res.filtered
+    filtered_pdfs = filtered_res.pdfs
+    
     MULTIQC_REPORT(data_for_reporting.collect())
     
     // collect results and publish using a custom output
-    all_res = sorted_jaln.mix(indexes).mix(doublets).mix(distros.dist_read1).mix(distrib).mix(read_plots.transpose()).groupTuple().map{
+    all_res = filtered_pdfs.transpose().mix(filtered_cells).mix(sorted_jaln).mix(indexes).mix(doublets).mix(distros.dist_read1).mix(distrib).mix(read_plots.transpose()).groupTuple().map{
         def name = it[0].split('_')[0]
         [name, it[1]]
     }
