@@ -1,0 +1,19 @@
+genome:
+    path: REPLACE_GENOME_PATH
+    version: GRCh37
+output:
+    prefix: vanilla
+panel:
+    name: MCL
+    path: REPLACE_MCL_PATH
+    bed: REPLACE_PANEL_INFO_BED
+gatk:
+  GenotypeGVCFs:
+    standard-min-confidence-threshold-for-calling: 0
+  HaplotypeCaller:
+    base-quality-score-threshold: 10
+    min-pruning: 2
+    sample-ploidy: 2
+  common:
+    heterozygosity: 0.001
+    max-alternate-alleles: 2
