@@ -60,7 +60,9 @@ include { make_minus_5panel } from "${localModule}"
 include { make_distribution } from "${localModule}" addParams(LABEL: "big_mem_time")
 include { doubletDetection } from "${localModule}" addParams(LABEL: "ignore")
 include { ectractAmpliconsFromPanelInfo } from "${localModule}"
-include { publishRes; reshape; join_headers } from "${localModule}"
+include { publishRes; reshape; reshapePairs; join_headers; reformatPairA } from "${localModule}"
+include { reformatPairB } from "${localModule}" addParams(LABEL: "big_cpus")
+
 
 include { cellfinder_MCL } from "${localModule}" addParams( EXTRAPARS:progPars["cellfinder_MCL_HC.R"], LABEL: "big_mem" )
 include { cellfinder_scTAM } from "${localModule}" addParams( EXTRAPARS:progPars["cellfinder_scTAMseq.R"], LABEL: "big_mem")
@@ -110,6 +112,7 @@ workflow {
     outbc.barcode_reads.join(outbc.sam_header).map{
         [ it[0], [ it[1], it[2] ], "-H ${it[3]}" ]
     }.set{ data_for_alignment } 
+    
     outmap = bwa_map(data_for_alignment, index)
     bams = SAMTOOLS_VIEW(outmap)
     fixed = PICARD_FIXMATE(bams)
@@ -156,6 +159,13 @@ workflow {
     filtered_res = filter_cells(data_for_filtering)  
     filtered_cells = filtered_res.filtered
     filtered_pdfs = filtered_res.pdfs
+
+    barcoded_reads = reshapePairs(outbc.barcode_reads)
+    ref_pairA = reformatPairA(barcoded_reads)
+    ref_pairB = reformatPairB(barcoded_reads)
+
+	ref_pairA.view()
+	ref_pairB.view()
     
     MULTIQC_REPORT(data_for_reporting.collect())
     

@@ -257,6 +257,50 @@ process filter_cells {
 
 }
 
+process reformatPairA {
+
+    container 'quay.io/biocontainers/biopython:1.68--py35_0'
+        label (params.LABEL)
+        tag("${sampleID}")
+
+        input:
+        tuple val(sampleID), path(fastqA), path(fastqB)
+
+        output:
+        tuple val(sampleID), path("${sampleID}_read2.with.barcodes_reformat.fastq.gz")
+         
+        script:        
+        """
+        cat ${fastqA} > ${sampleID}_read1.with.barcodes.fastq.gz
+        reformat.py --listOfFastqs ${sampleID}_read1.with.barcodes.fastq.gz --sampleName ${sampleID} --outputFolder ./ 
+        rm ${sampleID}_read1.with.barcodes.fastq.gz
+        """
+
+}
+
+process reformatPairB {
+
+        container 'biocorecrg/doubletdetection:0.1'
+        label (params.LABEL)
+        tag("${sampleID}")
+
+        input:
+        tuple val(sampleID), path(fastqA), path(fastqB)
+
+        output:
+        tuple val(sampleID), path("${sampleID}_read1.with.barcodes_reformat.fastq.gz")
+         
+        script:        
+        """
+        cat ${fastqB} > ${sampleID}_read2.with.barcodes.fastq.gz
+        
+        pigz -dkc ${sampleID}_read2.with.barcodes.fastq.gz | awk 'NR%4==1 {print \$1,\$3,"2:N:0:1"} NR%4!=1 {print \$0}' > ./${sampleID}_read2.with.barcodes_reformat.fastq 
+        pigz -p ${task.cpus} ${task.cpus}_read2.with.barcodes_reformat.fastq 
+        """
+
+}
+
+
 
 
 
@@ -304,6 +348,22 @@ def reshape(mychannel) {
 		id = it[0].split("---")[0]
 		[id, it[1]]
 	}.groupTuple(sort: true)
+	return(reshaped)
+}
+
+// reshape the channel
+def reshapePairs(mychannel) {
+	pairA = mychannel.map{
+		id = it[0].split("---")[0]
+		[id, it[1]]
+	}.groupTuple(sort: true)
+
+	pairB = mychannel.map{
+		id = it[0].split("---")[0]
+		[id, it[2]]
+	}.groupTuple(sort: true)
+
+    reshaped = pairA.join(pairB)
 	return(reshaped)
 }
 
