@@ -472,15 +472,12 @@ process genotyping {
 
 	script:
     
-	"""
-	cp /nfs/scratch01/bi/luca/tap_workaround/${sampleID}.combined.vcf .
-	bgzip ${sampleID}.combined.vcf	
-
  	"""
-//        export JAVA_OPTIONS="-Xmx${task.memory.toGiga()/2}g"
-//        alias java="java -Xmx${task.memory.toGiga()/2}g" ;
-//        gatk GenotypeGVCFs --java-options "-Xmx${task.memory.toGiga()/2}g -XX:ParallelGCThreads=${task.cpus}" -R ${genome} ${params.EXTRAPARS} -V gendb://${db_folder} -L ${panel} -O ${sampleID}.combined.vcf
-
+        export JAVA_OPTIONS="-Xmx${task.memory.toGiga()/2}g"
+        alias java="java -Xmx${task.memory.toGiga()/2}g" ;
+        gatk GenotypeGVCFs --java-options "-Xmx${task.memory.toGiga()/2}g -XX:ParallelGCThreads=${task.cpus}" -R ${genome} ${params.EXTRAPARS} -V gendb://${db_folder} -L ${panel} -O ${sampleID}.combined.vcf
+        bgzip ${sampleID}.combined.vcf
+        """
 }
 
 /*
