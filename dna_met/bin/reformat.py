@@ -1,0 +1,85 @@
+#!/usr/bin/env python
+
+import os
+import gzip
+from Bio import SeqIO
+from Bio.Seq import Seq
+from Bio.SeqRecord import SeqRecord
+import re
+import argparse
+
+
+################################
+# Setting an argument parser . #
+################################
+
+parser = argparse.ArgumentParser(description="Script to reformat provided FASTQs into a 10x Fastq-like format, incorporating cell barcode information from the RG tag at the beginning of the reads.")
+parser.add_argument('-fql','--listOfFastqs', nargs='+', help="List of fastqs to reformat", required=True)
+parser.add_argument("-sm","--sampleName", type=str, help="The sample name corresponding to the given fastqs")
+parser.add_argument("-of","--outputFolder", type=str, help="Path to the output folder")
+args = parser.parse_args()
+
+# Retrieve the argument values
+list_files = args.listOfFastqs
+sample = args.sampleName
+outdir= args.outputFolder
+
+################################
+############ FUNCs . ###########
+################################
+
+# Function to check if the file is gzipped based on its extension (.gz), and then opens and reads the file accordingly.
+def read_fastq(file_path):
+    if file_path.endswith(".gz"):
+        file = gzip.open(file_path, "rt")
+        fq = SeqIO.parse(file, "fastq")
+    else:
+        file = open(file_path, "r")
+        fq = SeqIO.parse(file, "fastq")
+    return(fq)
+
+# Function to extract a barcode from the RG tag in a read's description, appends it to the beginning of the read sequence, and generates a new quality score array with a maximum value for an 18-base barcode.
+def to_IOSeq_rec(row, read_nb):
+    """ This takes the barcode from the RG tag and adds it to the read sequence. 
+    Additionnaly, it adds phred score (barcode length) which is set to the best you can get 'I'.  """
+    new_phred = [40] * 18
+    motif_match= re.search(r"^.+(RG:Z:)(.+)", row.description)
+    barcode= (motif_match.group(2)).strip("-1")
+    qname = row.id+" "+str(read_nb)+":N:0:1"
+    seq = str(barcode)+ str(row.seq)
+    new_phred.extend(row.letter_annotations['phred_quality'])
+    record = SeqRecord(Seq(seq), id=qname, name=qname, description="", dbxrefs=None)
+    record.letter_annotations["phred_quality"] = new_phred
+    return(record)
+
+################################
+############# Main . ###########
+################################
+
+for file in list_files:
+    basename=os.path.basename(file)
+
+    ## Extract the read end from the provided fastq filename.
+    match_rnb = re.search(r"read(\d{1})", basename) 
+    readnb = match_rnb.group(1) if match_rnb else "NA"
+
+    ## Create the output if not existent.
+    if not os.path.exists(outdir):
+        os.makedirs(outdir)
+
+    ## The output file will be named by appending "_reformatted" to the input filename just before the extension.
+    outputfile = os.path.join(outdir + "/" + basename.replace(".fastq.gz", "_reformat.fastq.gz"))
+
+    ## Read input fastq file.
+    fq = read_fastq(file)
+    outputfqObj = gzip.open(outputfile, "wt") 
+
+    ## Write the output file.
+    for read in fq:
+        to_write = to_IOSeq_rec(read, readnb)
+        outputfqObj.write(to_write.format("fastq"))
+    
+    file.close()
+    outputfqObj.close()
+    
+print("----------------------------------- && done && -----------------------------------")
