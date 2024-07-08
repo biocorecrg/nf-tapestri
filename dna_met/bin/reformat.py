@@ -79,7 +79,7 @@ for file in list_files:
         to_write = to_IOSeq_rec(read, readnb)
         outputfqObj.write(to_write.format("fastq"))
     
-    file.close()
+    fq.close()
     outputfqObj.close()
     
 print("----------------------------------- && done && -----------------------------------")

@@ -264,45 +264,81 @@ process reformatPairA {
         tag("${sampleID}")
 
         input:
-        tuple val(sampleID), path(fastqA), path(fastqB)
+        tuple val(sampleID), path(fastqA)
 
         output:
-        tuple val(sampleID), path("${sampleID}_read2.with.barcodes_reformat.fastq.gz")
+        tuple val(sampleID), path("*_reformat.fastq.gz")
          
-        script:        
+        script:
+        def basefile = "${fastqA}".replaceAll('.with.barcodes_reformat.fastq.gz', '') 
+
         """
-        cat ${fastqA} > ${sampleID}_read1.with.barcodes.fastq.gz
-        reformat.py --listOfFastqs ${sampleID}_read1.with.barcodes.fastq.gz --sampleName ${sampleID} --outputFolder ./ 
-        rm ${sampleID}_read1.with.barcodes.fastq.gz
+        reformat.py --listOfFastqs ${fastqA} --sampleName ${basefile} --outputFolder ./ 
         """
 
 }
 
 process reformatPairB {
 
-        container 'biocorecrg/doubletdetection:0.1'
+        container 'quay.io/biocontainers/pigz:2.8'
         label (params.LABEL)
         tag("${sampleID}")
 
         input:
-        tuple val(sampleID), path(fastqA), path(fastqB)
+        tuple val(sampleID), path(fastqA)
 
         output:
-        tuple val(sampleID), path("${sampleID}_read1.with.barcodes_reformat.fastq.gz")
+        tuple val(sampleID), path("*_reformat.fastq.gz")
          
-        script:        
+        script:
+        def basefile = "${fastqA}".replaceAll('.with.barcodes_reformat.fastq.gz', '') 
+
         """
-        cat ${fastqB} > ${sampleID}_read2.with.barcodes.fastq.gz
-        
-        pigz -dkc ${sampleID}_read2.with.barcodes.fastq.gz | awk 'NR%4==1 {print \$1,\$3,"2:N:0:1"} NR%4!=1 {print \$0}' > ./${sampleID}_read2.with.barcodes_reformat.fastq 
-        pigz -p ${task.cpus} ${task.cpus}_read2.with.barcodes_reformat.fastq 
+        pigz -dkc ${fastqA} | awk 'NR%4==1 {print \$1,\$3,"2:N:0:1"} NR%4!=1 {print \$0}' | pigz -p ${task.cpus} -c > ./${basefile}.with.barcodes_reformat.fastq.gz 
         """
 
 }
 
+process cat_reads {
 
+        container 'quay.io/biocontainers/pigz:2.8'
+        label (params.LABEL)
+        tag("${sampleID}")
 
+        input:
+        tuple val(sampleID), path(fastqs)
 
+        output:
+        tuple val(sampleID), path("*.with.barcodes_reformat.fastq.gz")
+         
+        script:
+
+        """
+        cat ${fastqs} >> ${sampleID}_read${params.EXTRAPARS}.with.barcodes_reformat.fastq.gz
+        """
+
+}
+
+process extract_white_barcodes {
+
+        container 'quay.io/biocontainers/pigz:2.8'
+        label (params.LABEL)
+        tag("${sampleID}")
+
+        input:
+        tuple val(sampleID), path(fastq)
+
+        output:
+        tuple val(sampleID), path("*_MCL_barcodes.txt")
+         
+        script:
+        def basefile = "${fastq}".replaceAll('.with.barcodes_reformat.fastq.gz', '') 
+
+        """
+        zcat ${fastq} | grep '@'| cut -d " " -f 2 > ${basefile}_MCL_barcodes.txt 
+        """
+
+}
 
 
 
@@ -532,12 +568,15 @@ process genotyping {
 
 	script:
     
+	"""
+	cp /nfs/scratch01/bi/luca/tap_workaround/${sampleID}.combined.vcf .
+	bgzip ${sampleID}.combined.vcf	
+
  	"""
-        export JAVA_OPTIONS="-Xmx${task.memory.toGiga()/2}g"
-        alias java="java -Xmx${task.memory.toGiga()/2}g" ;
-        gatk GenotypeGVCFs --java-options "-Xmx${task.memory.toGiga()/2}g -XX:ParallelGCThreads=${task.cpus}" -R ${genome} ${params.EXTRAPARS} -V gendb://${db_folder} -L ${panel} -O ${sampleID}.combined.vcf
-        bgzip ${sampleID}.combined.vcf
-        """
+//        export JAVA_OPTIONS="-Xmx${task.memory.toGiga()/2}g"
+//        alias java="java -Xmx${task.memory.toGiga()/2}g" ;
+//        gatk GenotypeGVCFs --java-options "-Xmx${task.memory.toGiga()/2}g -XX:ParallelGCThreads=${task.cpus}" -R ${genome} ${params.EXTRAPARS} -V gendb://${db_folder} -L ${panel} -O ${sampleID}.combined.vcf
+
 }
 
 /*

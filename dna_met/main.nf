@@ -60,15 +60,17 @@ include { make_minus_5panel } from "${localModule}"
 include { make_distribution } from "${localModule}" addParams(LABEL: "big_mem_time")
 include { doubletDetection } from "${localModule}" addParams(LABEL: "ignore")
 include { ectractAmpliconsFromPanelInfo } from "${localModule}"
-include { publishRes; reshape; reshapePairs; join_headers; reformatPairA } from "${localModule}"
+include { publishRes; reshape; reshapePairs; join_headers } from "${localModule}"
+include { reformatPairA } from "${localModule}"addParams(LABEL: "big_mem")
 include { reformatPairB } from "${localModule}" addParams(LABEL: "big_cpus")
-
+include { extract_white_barcodes } from "${localModule}" 
 
 include { cellfinder_MCL } from "${localModule}" addParams( EXTRAPARS:progPars["cellfinder_MCL_HC.R"], LABEL: "big_mem" )
 include { cellfinder_scTAM } from "${localModule}" addParams( EXTRAPARS:progPars["cellfinder_scTAMseq.R"], LABEL: "big_mem")
 include { reads_per_cell } from "${localModule}" addParams ( LABEL: "big_mem" )
 include { filter_cells } from "${localModule}" addParams ( LABEL: "big_mem" )
-
+include { cat_reads as cat_reads_A } from "${localModule}" addParams ( EXTRAPARS:"1" )
+include { cat_reads as cat_reads_B } from "${localModule}" addParams ( EXTRAPARS:"2" )
 
 include { INDEX as BWA_INDEX } from "${moduleFolder}/alignment/bwa" addParams(STOREINDEX:"${outputfolder}/index", CONTAINER:"biocorecrg/tapestri:2.0.1")
 include { FASTQCP as FASTQC_QC } from "${moduleFolder}/qc/fastqc" 
@@ -92,10 +94,6 @@ Channel.fromFilePairs( params.reads, flat: true)
 Channel.fromPath( params.panel )
 .ifEmpty { error "Cannot find any panel file ${params.panel}" }
 .set { panel_file }    
-
-Channel.fromPath ( params.CpG_unmeth )
-.ifEmpty { error "Cannot find any CpG_unmeth file ${params.CpG_unmeth}" }
-.set { CpG_unmeth }
 
 
 workflow {
@@ -154,18 +152,41 @@ workflow {
         
     read_plots = reads_per_cell(data_for_plot)
     
-    data_for_filtering = distrib.join(doublets).combine(ampli_file).combine(CpG_unmeth)
+     if (params.CpG_unmeth != "") {
 
-    filtered_res = filter_cells(data_for_filtering)  
-    filtered_cells = filtered_res.filtered
-    filtered_pdfs = filtered_res.pdfs
+        Channel.fromPath ( params.CpG_unmeth )
+        .ifEmpty { error "Cannot find any CpG_unmeth file ${params.CpG_unmeth}" }
+        .set { CpG_unmeth }
 
-    barcoded_reads = reshapePairs(outbc.barcode_reads)
-    ref_pairA = reformatPairA(barcoded_reads)
-    ref_pairB = reformatPairB(barcoded_reads)
-
-	ref_pairA.view()
-	ref_pairB.view()
+		data_for_filtering = distrib.join(doublets).combine(ampli_file).combine(CpG_unmeth)
+	
+		filtered_res = filter_cells(data_for_filtering)  
+		filtered_cells = filtered_res.filtered
+		filtered_pdfs = filtered_res.pdfs
+	
+		//barcoded_reads = reshapePairs(outbc.barcode_reads)
+	
+		bc_read_A = outbc.barcode_reads.map{
+			[it[0], it[1]]
+		}
+	
+		bc_read_B = outbc.barcode_reads.map{
+			[it[0], it[2]]
+		}    
+		
+		ref_pairA = reformatPairA(bc_read_A)
+		ref_pairB = reformatPairB(bc_read_B)
+		
+		white_BC = extract_white_barcodes(ref_pairA)
+		white_BC.view()
+		
+		reformat_A = cat_reads_A(reshape(ref_pairA))
+		reformat_B = cat_reads_B(reshape(ref_pairB))
+	   
+		reformat_A.view()
+		reformat_B.view()
+    }
+ 
     
     MULTIQC_REPORT(data_for_reporting.collect())
     
