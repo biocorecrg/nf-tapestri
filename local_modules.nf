@@ -319,6 +319,26 @@ process cat_reads {
 
 }
 
+process cat_white_barcodes {
+
+        container 'quay.io/biocontainers/pigz:2.8'
+        label (params.LABEL)
+        tag("${sampleID}")
+
+        input:
+        tuple val(sampleID), path(whitebc)
+
+        output:
+        tuple val(sampleID), path("*_read1_MCL_barcodes.txt.gz")
+         
+        script:
+
+        """
+        cat ${whitebc} >> ${sampleID}_read1_MCL_barcodes.txt.gz
+        """
+
+}
+
 process extract_white_barcodes {
 
         container 'quay.io/biocontainers/pigz:2.8'
@@ -329,17 +349,16 @@ process extract_white_barcodes {
         tuple val(sampleID), path(fastq)
 
         output:
-        tuple val(sampleID), path("*_MCL_barcodes.txt")
+        tuple val(sampleID), path("*_MCL_barcodes.txt.gz")
          
         script:
         def basefile = "${fastq}".replaceAll('.with.barcodes_reformat.fastq.gz', '') 
 
         """
-        zcat ${fastq} | grep '@'| cut -d " " -f 2 > ${basefile}_MCL_barcodes.txt 
+        zcat ${fastq} | grep '@'| cut -d " " -f 2 | sed 's/RG:Z://g'| sed 's/-1//g' | pigz -c -p ${task.cpus} > ${basefile}_MCL_barcodes.txt.gz 
         """
 
 }
-
 
 
 process publishRes() {

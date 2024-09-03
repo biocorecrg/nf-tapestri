@@ -36,6 +36,8 @@ ampli                       : ${params.ampli}
 cellfinder                  : ${params.cellfinder}
 CpG_unmeth                  : ${params.CpG_unmeth}
 nreads                      : ${params.nreads}
+vdj                         : ${params.vdj}
+coord_f                     : ${params.coord_f}
 email                       : ${params.email}
 output (output folder)      : ${params.output}
 """
@@ -43,7 +45,7 @@ output (output folder)      : ${params.output}
 if (params.resume) exit 1, "Are you making the classical --resume typo? Be careful!!!! ;)"
 
 moduleFolder   = "${projectDir}/../BioNextflow/subworkflows"
-multiQC_conf   = Channel.fromPath("${projectDir}/config.yaml")
+//multiQC_conf   = Channel.fromPath("${projectDir}/config.yaml", checkIfExists: true)
 localModule    = "${projectDir}/../local_modules.nf"
 tools_opt      = "${projectDir}/tools_opt.tsv"
 
@@ -63,7 +65,7 @@ include { ectractAmpliconsFromPanelInfo } from "${localModule}"
 include { publishRes; reshape; reshapePairs; join_headers } from "${localModule}"
 include { reformatPairA } from "${localModule}"addParams(LABEL: "big_mem")
 include { reformatPairB } from "${localModule}" addParams(LABEL: "big_cpus")
-include { extract_white_barcodes } from "${localModule}" 
+include { extract_white_barcodes } from "${localModule}"
 
 include { cellfinder_MCL } from "${localModule}" addParams( EXTRAPARS:progPars["cellfinder_MCL_HC.R"], LABEL: "big_mem" )
 include { cellfinder_scTAM } from "${localModule}" addParams( EXTRAPARS:progPars["cellfinder_scTAMseq.R"], LABEL: "big_mem")
@@ -71,6 +73,8 @@ include { reads_per_cell } from "${localModule}" addParams ( LABEL: "big_mem" )
 include { filter_cells } from "${localModule}" addParams ( LABEL: "big_mem" )
 include { cat_reads as cat_reads_A } from "${localModule}" addParams ( EXTRAPARS:"1" )
 include { cat_reads as cat_reads_B } from "${localModule}" addParams ( EXTRAPARS:"2" )
+include { cat_white_barcodes } from "${localModule}" 
+
 
 include { INDEX as BWA_INDEX } from "${moduleFolder}/alignment/bwa" addParams(STOREINDEX:"${outputfolder}/index", CONTAINER:"biocorecrg/tapestri:2.0.1")
 include { FASTQCP as FASTQC_QC } from "${moduleFolder}/qc/fastqc" 
@@ -87,11 +91,14 @@ include { BVIEW as SAMTOOLS_GET_HEADER } from "${moduleFolder}/misc/samtools" ad
 include { FIXMATE_INFO as PICARD_FIXMATE } from "${moduleFolder}/misc/picard" addParams(CONTAINER:"biocorecrg/tapestri:2.0.1", EXTRAPARS:progPars["picard"], LABEL: "big_cpus")
 include { INDEX as SAMTOOLS_INDEX } from "${moduleFolder}/misc/samtools" addParams(CONTAINER:"biocorecrg/tapestri:2.0.1", LABEL: "big_cpus")
 
+include { RUNPE as RUNPE_TRUST4 } from "${moduleFolder}/immune_sys/trust4" addParams(EXTRAPARS:progPars["trust4"], LABEL: "big_cpus")
+
+
 Channel.fromFilePairs( params.reads, flat: true) 
 .ifEmpty { error "Cannot find any reads matching: ${params.reads}" }
 .set { ori_read_files }    
 
-Channel.fromPath( params.panel )
+Channel.fromPath( params.panel, checkIfExists: true )
 .ifEmpty { error "Cannot find any panel file ${params.panel}" }
 .set { panel_file }    
 
@@ -132,7 +139,7 @@ workflow {
     distrib = channel.empty()
     switch(params.cellfinder) {
         case "cellfinder_MCL_HC.R":
-            Channel.fromPath( params.ampli )
+            Channel.fromPath( params.ampli, checkIfExists: true )
             .ifEmpty { error "Cannot find any ampli file ${params.ampli}" }.set { ampli_file }
             distrib = cellfinder_MCL(distros.dist_read1.combine(ampli_file))
             break;
@@ -140,7 +147,7 @@ workflow {
             if ( params.ampli == "") {
                 ampli_file = ectractAmpliconsFromPanelInfo(panel_file) 
             } else {
-                Channel.fromPath( params.ampli )
+                Channel.fromPath( params.ampli, checkIfExists: true )
                 .ifEmpty { error "Cannot find any ampli file ${params.ampli}" }.set { ampli_file }      
             }
             distrib = cellfinder_scTAM(distros.dist_read1.combine(ampli_file))
@@ -151,10 +158,11 @@ workflow {
     data_for_plot = distrib.join(doublets).combine(ampli_file)
         
     read_plots = reads_per_cell(data_for_plot)
-    
-     if (params.CpG_unmeth != "") {
+    filtered_pdfs = channel.empty() 
+    filtered_cells = channel.empty()
+    if (params.CpG_unmeth != "") {
 
-        Channel.fromPath ( params.CpG_unmeth )
+        Channel.fromPath ( params.CpG_unmeth, checkIfExists: true )
         .ifEmpty { error "Cannot find any CpG_unmeth file ${params.CpG_unmeth}" }
         .set { CpG_unmeth }
 
@@ -163,9 +171,7 @@ workflow {
 		filtered_res = filter_cells(data_for_filtering)  
 		filtered_cells = filtered_res.filtered
 		filtered_pdfs = filtered_res.pdfs
-	
-		//barcoded_reads = reshapePairs(outbc.barcode_reads)
-	
+		
 		bc_read_A = outbc.barcode_reads.map{
 			[it[0], it[1]]
 		}
@@ -174,17 +180,23 @@ workflow {
 			[it[0], it[2]]
 		}    
 		
-		ref_pairA = reformatPairA(bc_read_A)
-		ref_pairB = reformatPairB(bc_read_B)
+		if (params.vdj == "YES") {
+		    ref_pairA = reformatPairA(bc_read_A)
+		    ref_pairB = reformatPairB(bc_read_B)
 		
-		white_BC = extract_white_barcodes(ref_pairA)
-		white_BC.view()
+		    white_BCs = extract_white_barcodes(ref_pairA)
 		
-		reformat_A = cat_reads_A(reshape(ref_pairA))
-		reformat_B = cat_reads_B(reshape(ref_pairB))
+		    reformat_A = cat_reads_A(reshape(ref_pairA))
+		    reformat_B = cat_reads_B(reshape(ref_pairB))
 	   
-		reformat_A.view()
-		reformat_B.view()
+		    white_BC = cat_white_barcodes(reshape(white_BCs))
+		
+		    genome = channel.fromPath(params.genome, checkIfExists: true)
+		    coord_f = channel.fromPath(params.coord_f, checkIfExists: true)
+		
+		    reformat_reads = reformat_A.mix(reformat_B).groupTuple()
+	        RUNPE_TRUST4(genome, coord_f, white_BC, reformat_reads)
+	    }
     }
  
     

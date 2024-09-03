@@ -6,8 +6,12 @@ panel: "/users/rbeekman/abianchi/test_pipeline/panel_info/dna_pipeline/panel_inf
 ampli: "/users/rbeekman/abianchi/test_pipeline/panel_info/dna_pipeline/for_cells_selection/Control_amplicons_all_NonHhaI.csv"
 ##"/users/rbeekman/abianchi/test_pipeline/panel_info/dna_pipeline/Control_amplicons_100_HP_new_panel.csv"
 # cellfinder can be cellfinder_scTAMseq.R / cellfinder_MCL_HC.R 
+CpG_unmeth: "${projectDir}/anno/CpG.always.unmeth.B.extended.panel.csv"
 cellfinder: "cellfinder_scTAMseq.R" 
-nreads: 50000000
+nreads: 20000000
+vdj: "YES"
+coord_f: "${projectDir}/../anno/hg19_bcrtcr.fa.gz"
+
 hook: ""
 email: ""
 output: "${projectDir}/outfolder2"
