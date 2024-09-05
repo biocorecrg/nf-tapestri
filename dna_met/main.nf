@@ -90,8 +90,7 @@ include { BVIEW as SAMTOOLS_VIEW } from "${moduleFolder}/misc/samtools" addParam
 include { BVIEW as SAMTOOLS_GET_HEADER } from "${moduleFolder}/misc/samtools" addParams(CONTAINER:"biocorecrg/tapestri:2.0.1", EXTRAPARS: " -H ", LABEL: "big_cpus")
 include { FIXMATE_INFO as PICARD_FIXMATE } from "${moduleFolder}/misc/picard" addParams(CONTAINER:"biocorecrg/tapestri:2.0.1", EXTRAPARS:progPars["picard"], LABEL: "big_cpus")
 include { INDEX as SAMTOOLS_INDEX } from "${moduleFolder}/misc/samtools" addParams(CONTAINER:"biocorecrg/tapestri:2.0.1", LABEL: "big_cpus")
-
-include { RUNPE as RUNPE_TRUST4 } from "${moduleFolder}/immune_sys/trust4" addParams(EXTRAPARS:progPars["trust4"], LABEL: "big_cpus")
+include { RUNPE as RUNPE_TRUST4 } from "${moduleFolder}/immune_sys/trust4" addParams(EXTRAPARS:progPars["trust4"], LABEL: "big_time_cpus")
 
 
 Channel.fromFilePairs( params.reads, flat: true) 
@@ -195,7 +194,7 @@ workflow {
 		    coord_f = channel.fromPath(params.coord_f, checkIfExists: true)
 		
 		    reformat_reads = reformat_A.mix(reformat_B).groupTuple()
-	        RUNPE_TRUST4(genome, coord_f, white_BC, reformat_reads)
+            trust_res = RUNPE_TRUST4(genome, coord_f, white_BC, reformat_reads)
 	    }
     }
  
@@ -203,7 +202,7 @@ workflow {
     MULTIQC_REPORT(data_for_reporting.collect())
     
     // collect results and publish using a custom output
-    all_res = filtered_pdfs.transpose().mix(filtered_cells).mix(sorted_jaln).mix(indexes).mix(doublets).mix(distros.dist_read1).mix(distrib).mix(read_plots.transpose()).groupTuple().map{
+    all_res = filtered_pdfs.transpose().mix(trust_res).mix(filtered_cells).mix(sorted_jaln).mix(indexes).mix(doublets).mix(distros.dist_read1).mix(distrib).mix(read_plots.transpose()).groupTuple().map{
         def name = it[0].split('_')[0]
         [name, it[1]]
     }

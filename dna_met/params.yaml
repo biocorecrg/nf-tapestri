@@ -6,9 +6,12 @@ panel: "${projectDir}/anno/panel_info.bed"
 #ampli: "${projectDir}/anno/Control_amplicons_cell_lines.csv"
 #ampli: "${projectDir}/anno/CO-200.zip"
 ampli: ""
+cpg_unmeth: "${projectDir}/anno/CpG.always.unmeth.B.extended.panel.csv"
 # cellfinder can be cellfinder_scTAMseq.R / cellfinder_MCL_HC.R 
 cellfinder: "cellfinder_scTAMseq.R" 
 nreads: 100000
+vdj: "YES"
+coord_f: "${projectDir}/anno/hg38_bcrtcr.f"
 hook: ""
 email: ""
 output: "${projectDir}/outfolder"

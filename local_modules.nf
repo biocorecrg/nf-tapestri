@@ -380,6 +380,7 @@ process publishRes() {
 		mkdir ${sampleID}/intermediate
 		mkdir ${sampleID}/qc_log
 		mkdir ${sampleID}/plots
+		mkdir ${sampleID}/trust4
 		mv *.pdf ${sampleID}/plots
 		mv *.bam* ./${sampleID}/intermediate
 		mv *_stats.txt ./${sampleID}/qc_log
@@ -387,9 +388,12 @@ process publishRes() {
 		mv *.png ./${sampleID}/qc_log
 		mv *.txt ./${sampleID}/intermediate
 		mv *.tsv ./${sampleID}/output
-        mv *.csv ./${sampleID}/output
-	    for i in ${sampleID}/intermediate/*.txt; do cat \$i | gzip -c > ${sampleID}/intermediate/`basename \$i`.gz; done
+		mv *.csv ./${sampleID}/output
+		for i in ${sampleID}/intermediate/*.txt; do cat \$i | gzip -c > ${sampleID}/intermediate/`basename \$i`.gz; done
 		rm ${sampleID}/intermediate/*.txt
+		if compgen -G "${sampleID}_*" > /dev/null; then
+			mv ${sampleID}_* ${sampleID}/trust4
+		fi
         """
 
 }
