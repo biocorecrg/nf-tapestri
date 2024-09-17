@@ -193,7 +193,9 @@ workflow {
 		    genome = channel.fromPath(params.genome, checkIfExists: true)
 		    coord_f = channel.fromPath(params.coord_f, checkIfExists: true)
 		
-		    reformat_reads = reformat_A.mix(reformat_B).groupTuple()
+		    reformat_reads = reformat_A.join(reformat_B)
+		    reformat_reads.view()
+		    
             trust_res = RUNPE_TRUST4(genome, coord_f, white_BC, reformat_reads)
 	    }
     }

@@ -360,6 +360,27 @@ process extract_white_barcodes {
 
 }
 
+process trust_cluster {
+
+        container 'quay.io/biocontainers/biopython:1.68--py35_0'
+        label (params.LABEL)
+        tag("${sampleID}")
+
+        input:
+        tuple val(sampleID), path(trust4_output)
+
+        output:
+        tuple val(sampleID), path("*_MCL_barcodes.txt.gz")
+         
+        script:
+
+        """
+#        trust-cluster.py ${trust4_output}_read1_cdr3.out -s 0.9 --center > trust_cdr3_clones.out
+        """
+
+}
+
+
 
 process publishRes() {
         publishDir params.output, mode: 'copy'
