@@ -370,12 +370,12 @@ process trust_cluster {
         tuple val(sampleID), path(trust4_output)
 
         output:
-        tuple val(sampleID), path("*_MCL_barcodes.txt.gz")
+        tuple val(sampleID), path("${trust4_output}_cdr3_clones.out")
          
         script:
 
         """
-#        trust-cluster.py ${trust4_output}_read1_cdr3.out -s 0.9 --center > trust_cdr3_clones.out
+        trust-cluster.py ${trust4_output}/${trust4_output}_read1_cdr3.out ${params.EXTRAPARS} > ${trust4_output}_cdr3_clones.out
         """
 
 }

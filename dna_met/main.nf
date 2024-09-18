@@ -38,6 +38,7 @@ CpG_unmeth                  : ${params.CpG_unmeth}
 nreads                      : ${params.nreads}
 vdj                         : ${params.vdj}
 coord_f                     : ${params.coord_f}
+ref_trust                   : ${params.ref_trust}
 email                       : ${params.email}
 output (output folder)      : ${params.output}
 """
@@ -74,6 +75,10 @@ include { filter_cells } from "${localModule}" addParams ( LABEL: "big_mem" )
 include { cat_reads as cat_reads_A } from "${localModule}" addParams ( EXTRAPARS:"1" )
 include { cat_reads as cat_reads_B } from "${localModule}" addParams ( EXTRAPARS:"2" )
 include { cat_white_barcodes } from "${localModule}" 
+
+include { trust_cluster } from "${localModule}" addParams ( EXTRAPARS:progPars["trust-cluster"] )
+
+
 
 
 include { INDEX as BWA_INDEX } from "${moduleFolder}/alignment/bwa" addParams(STOREINDEX:"${outputfolder}/index", CONTAINER:"biocorecrg/tapestri:2.0.1")
@@ -190,13 +195,13 @@ workflow {
 	   
 		    white_BC = cat_white_barcodes(reshape(white_BCs))
 		
-		    genome = channel.fromPath(params.genome, checkIfExists: true)
+		    ref_trust = channel.fromPath(params.ref_trust, checkIfExists: true)
 		    coord_f = channel.fromPath(params.coord_f, checkIfExists: true)
 		
-		    reformat_reads = reformat_A.join(reformat_B)
-		    reformat_reads.view()
-		    
-            trust_res = RUNPE_TRUST4(genome, coord_f, white_BC, reformat_reads)
+		    reformat_reads = reformat_A.join(reformat_B)		    
+            trust_res = RUNPE_TRUST4(ref_trust, coord_f, white_BC, reformat_reads)
+            clus_res = trust_cluster(trust_res)
+            clus_res.view()
 	    }
     }
  

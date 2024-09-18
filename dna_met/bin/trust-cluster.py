@@ -1,6 +1,7 @@
+#!/usr/bin/env python3
+
 # Li Song: the program to re-cluster the CDR3 regions
 
-#!/usr/bin/env python3
 
 import sys
 import math
