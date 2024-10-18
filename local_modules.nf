@@ -375,7 +375,7 @@ process trust_cluster {
         script:
 
         """
-        trust-cluster.py ${trust4_output}/${trust4_output}_read1_cdr3.out ${params.EXTRAPARS} > ${trust4_output}_cdr3_clones.out
+        trust-cluster.py ${trust4_output}/TRUST_${trust4_output}_read1_cdr3.out ${params.EXTRAPARS} > ${trust4_output}_cdr3_clones.out
         """
 
 }
@@ -402,6 +402,7 @@ process publishRes() {
 		mkdir ${sampleID}/qc_log
 		mkdir ${sampleID}/plots
 		mkdir ${sampleID}/trust4
+		mkdir ${sampleID}/trust_cluster
 		mv *.pdf ${sampleID}/plots
 		mv *.bam* ./${sampleID}/intermediate
 		mv *_stats.txt ./${sampleID}/qc_log
@@ -411,6 +412,7 @@ process publishRes() {
 		mv *.tsv ./${sampleID}/output
 		mv *.csv ./${sampleID}/output
 		for i in ${sampleID}/intermediate/*.txt; do cat \$i | gzip -c > ${sampleID}/intermediate/`basename \$i`.gz; done
+		mv *_clones.out ${sampleID}/trust_cluster
 		rm ${sampleID}/intermediate/*.txt
 		if compgen -G "${sampleID}_*" > /dev/null; then
 			mv ${sampleID}_* ${sampleID}/trust4
@@ -425,9 +427,14 @@ process publishRes() {
 // reshape the channel
 def reshape(mychannel) {
 	reshaped = mychannel.map{
-		id = it[0].split("---")[0]
-		[id, it[1]]
-	}.groupTuple(sort: true)
+	    def vars = it[0].split("---")
+		def num = vars[1].split("_")[0]
+		[ it[1], num as Integer ]
+	}.toSortedList { a, b -> a[1] <=> b[1] }.transpose().first().flatten().map{
+	    def id = it.getSimpleName().split("---")[0]
+		[ id, it ]
+	}.groupTuple()
+
 	return(reshaped)
 }
 

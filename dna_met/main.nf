@@ -125,7 +125,8 @@ workflow {
     outmap = bwa_map(data_for_alignment, index)
     bams = SAMTOOLS_VIEW(outmap)
     fixed = PICARD_FIXMATE(bams)
-    fixed_headers = SAMTOOLS_GET_HEADER(fixed)
+    fixed_headers = SAMTOOLS_GET_HEADER(fixed)    
+
     sam_header = join_headers(reshape(fixed_headers))
     data_2_cat = reshape(fixed).join(sam_header)
 
@@ -188,7 +189,7 @@ workflow {
 		    ref_pairA = reformatPairA(bc_read_A)
 		    ref_pairB = reformatPairB(bc_read_B)
 		
-		    white_BCs = extract_white_barcodes(ref_pairA)
+		    white_BCs = extract_white_barcodes(bc_read_A)
 		
 		    reformat_A = cat_reads_A(reshape(ref_pairA))
 		    reformat_B = cat_reads_B(reshape(ref_pairB))
@@ -201,7 +202,6 @@ workflow {
 		    reformat_reads = reformat_A.join(reformat_B)		    
             trust_res = RUNPE_TRUST4(ref_trust, coord_f, white_BC, reformat_reads)
             clus_res = trust_cluster(trust_res)
-            clus_res.view()
 	    }
     }
  
@@ -209,13 +209,14 @@ workflow {
     MULTIQC_REPORT(data_for_reporting.collect())
     
     // collect results and publish using a custom output
-    all_res = filtered_pdfs.transpose().mix(trust_res).mix(filtered_cells).mix(sorted_jaln).mix(indexes).mix(doublets).mix(distros.dist_read1).mix(distrib).mix(read_plots.transpose()).groupTuple().map{
+    all_res = filtered_pdfs.transpose().mix(trust_res).mix(clus_res).mix(filtered_cells).mix(sorted_jaln).mix(indexes).mix(doublets).mix(distros.dist_read1).mix(distrib).mix(read_plots.transpose()).groupTuple().map{
         def name = it[0].split('_')[0]
         [name, it[1]]
     }
     
     
     publishRes(all_res)
+
 
 }
 
