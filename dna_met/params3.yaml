@@ -1,0 +1,20 @@
+# Parameters
+reads: "/users/rbeekman/sequencing_data/Roser_Zaurin/2023-02-23_AHNN3MDSX5/BEEKMANREN_37/T27_1_lib_00014AAE_CTGATCGT-GCGCATAT_R{1,2}_001.fastq.gz"
+genome: "${projectDir}/anno/GRCh37.p13.genome.fa.gz"
+index: "${projectDir}/index"
+panel: "/users/rbeekman/abianchi/test_pipeline/panel_info/dna_pipeline/panel_info.bed"
+# ampli can be "" in case of cellfinder_scTAMseq.R and it will take the 4th column of the panel file
+ampli: "/users/rbeekman/abianchi/test_pipeline/panel_info/dna_pipeline/for_cells_selection/Control_amplicons_all_NonHhaI.csv"
+##"/users/rbeekman/abianchi/test_pipeline/panel_info/dna_pipeline/Control_amplicons_100_HP_new_panel.csv"
+# cellfinder can be cellfinder_scTAMseq.R / cellfinder_MCL_HC.R 
+CpG_unmeth: "${projectDir}/anno/CpG.always.unmeth.B.extended.panel.csv"
+cellfinder: "cellfinder_scTAMseq.R" 
+nreads: 20000000
+vdj: "NO"
+coord_f: ""
+ref_trust: ""
+
+
+hook: ""
+email: ""
+output: "${projectDir}/outfolder4"

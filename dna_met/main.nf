@@ -79,9 +79,7 @@ include { cat_white_barcodes } from "${localModule}"
 include { trust_cluster } from "${localModule}" addParams ( EXTRAPARS:progPars["trust-cluster"] )
 
 
-
-
-include { INDEX as BWA_INDEX } from "${moduleFolder}/alignment/bwa" addParams(STOREINDEX:"${outputfolder}/index", CONTAINER:"biocorecrg/tapestri:2.0.1")
+include { INDEX as BWA_INDEX } from "${moduleFolder}/alignment/bwa" addParams(STOREINDEX:params.index, CONTAINER:"biocorecrg/tapestri:2.0.1")
 include { FASTQCP as FASTQC_QC } from "${moduleFolder}/qc/fastqc" 
 include { REPORT as MULTIQC_REPORT  } from "${moduleFolder}/reporting/multiqc" addParams(OUTPUT: "${outputfolder}/report/")
 
@@ -202,6 +200,9 @@ workflow {
 		    reformat_reads = reformat_A.join(reformat_B)		    
             trust_res = RUNPE_TRUST4(ref_trust, coord_f, white_BC, reformat_reads)
             clus_res = trust_cluster(trust_res)
+	    } else {
+	    	trust_res = channel.empty()
+	    	clus_res = channel.empty()
 	    }
     }
  
