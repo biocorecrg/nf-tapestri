@@ -77,6 +77,7 @@ include { cat_reads as cat_reads_B } from "${localModule}" addParams ( EXTRAPARS
 include { cat_white_barcodes } from "${localModule}" 
 
 include { trust_cluster } from "${localModule}" addParams ( EXTRAPARS:progPars["trust-cluster"] )
+include { barcoderep_to_10X } from "${localModule}" 
 
 
 include { INDEX as BWA_INDEX } from "${moduleFolder}/alignment/bwa" addParams(STOREINDEX:params.index, CONTAINER:"biocorecrg/tapestri:2.0.1")
@@ -200,9 +201,11 @@ workflow {
 		    reformat_reads = reformat_A.join(reformat_B)		    
             trust_res = RUNPE_TRUST4(ref_trust, coord_f, white_BC, reformat_reads)
             clus_res = trust_cluster(trust_res)
+            t10x_res = barcoderep_to_10X(trust_res)
 	    } else {
 	    	trust_res = channel.empty()
 	    	clus_res = channel.empty()
+	    	t10x_res = channel.empty()
 	    }
     }
  
@@ -210,7 +213,7 @@ workflow {
     MULTIQC_REPORT(data_for_reporting.collect())
     
     // collect results and publish using a custom output
-    all_res = filtered_pdfs.transpose().mix(trust_res).mix(clus_res).mix(filtered_cells).mix(sorted_jaln).mix(indexes).mix(doublets).mix(distros.dist_read1).mix(distrib).mix(read_plots.transpose()).groupTuple().map{
+    all_res = filtered_pdfs.transpose().mix(trust_res).mix(t10x_res.transpose()).mix(clus_res).mix(filtered_cells).mix(sorted_jaln).mix(indexes).mix(doublets).mix(distros.dist_read1).mix(distrib).mix(read_plots.transpose()).groupTuple().map{
         def name = it[0].split('_')[0]
         [name, it[1]]
     }

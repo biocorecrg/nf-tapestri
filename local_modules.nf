@@ -360,6 +360,26 @@ process extract_white_barcodes {
 
 }
 
+process barcoderep_to_10X {
+
+		container 'biocorecrg/tapestri:2.0.1'
+        label (params.LABEL)
+        tag("${sampleID}")
+
+        input:
+        tuple val(sampleID), path(trust4_output)
+
+        output:
+        tuple val(sampleID), path("${trust4_output}_*")
+         
+        script:
+
+        """
+        trust-barcoderep-to-10X.pl ${trust4_output}/TRUST_${trust4_output}_read1_barcode_report.tsv ${trust4_output}
+        """
+
+}
+
 process trust_cluster {
 
         container 'quay.io/biocontainers/biopython:1.68--py35_0'
@@ -379,7 +399,6 @@ process trust_cluster {
         """
 
 }
-
 
 
 process publishRes() {
@@ -410,6 +429,9 @@ process publishRes() {
 		mv *.png ./${sampleID}/qc_log
 		mv *.txt ./${sampleID}/intermediate
 		mv *.tsv ./${sampleID}/output
+		mv *_b.csv ${sampleID}/trust4
+		mv *_t.csv ${sampleID}/trust4
+
 		mv *.csv ./${sampleID}/output
 		for i in ${sampleID}/intermediate/*.txt; do cat \$i | gzip -c > ${sampleID}/intermediate/`basename \$i`.gz; done
 		mv *_clones.out ${sampleID}/trust_cluster
