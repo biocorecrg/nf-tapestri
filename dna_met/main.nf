@@ -164,6 +164,10 @@ workflow {
     read_plots = reads_per_cell(data_for_plot)
     filtered_pdfs = channel.empty() 
     filtered_cells = channel.empty()
+	trust_res = channel.empty()
+	clus_res = channel.empty()
+	t10x_res = channel.empty()
+
     if (params.CpG_unmeth != "") {
 
         Channel.fromPath ( params.CpG_unmeth, checkIfExists: true )
@@ -202,11 +206,7 @@ workflow {
             trust_res = RUNPE_TRUST4(ref_trust, coord_f, white_BC, reformat_reads)
             clus_res = trust_cluster(trust_res)
             t10x_res = barcoderep_to_10X(trust_res)
-	    } else {
-	    	trust_res = channel.empty()
-	    	clus_res = channel.empty()
-	    	t10x_res = channel.empty()
-	    }
+	    } 
     }
  
     
