@@ -1,5 +1,5 @@
 # Parameters
-reads: "${projectDir}/real_data/*_R{1,2}_001.fastq.gz"
+reads: "/users/rbeekman/sequencing_data/Roser_Zaurin/2023-02-23_AHNN3MDSX5/BEEKMANREN_37/T27_1_lib_00014AAE_CTGATCGT-GCGCATAT_R{1,2}_001.fastq.gz"
 genome: "${projectDir}/anno/GRCh37.p13.genome.fa.gz"
 panel: "/users/rbeekman/abianchi/test_pipeline/panel_info/dna_pipeline/panel_info.bed"
 # ampli can be "" in case of cellfinder_scTAMseq.R and it will take the 4th column of the panel file
@@ -10,8 +10,10 @@ CpG_unmeth: "${projectDir}/anno/CpG.always.unmeth.B.extended.panel.csv"
 cellfinder: "cellfinder_scTAMseq.R" 
 nreads: 20000000
 vdj: "YES"
-coord_f: "${projectDir}/../anno/hg19_bcrtcr.fa.gz"
+coord_f: "${projectDir}/anno/hg19_bcrtcr.fa.gz"
+ref_trust: "${projectDir}/anno/human_IMGT+C.fa.gz"
+
 
 hook: ""
 email: ""
-output: "${projectDir}/outfolder2"
+output: "${projectDir}/outfolder3"
