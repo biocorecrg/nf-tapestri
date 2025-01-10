@@ -71,7 +71,7 @@ include { extract_white_barcodes } from "${localModule}"
 include { cellfinder_MCL } from "${localModule}" addParams( EXTRAPARS:progPars["cellfinder_MCL_HC.R"], LABEL: "big_mem" )
 include { cellfinder_scTAM } from "${localModule}" addParams( EXTRAPARS:progPars["cellfinder_scTAMseq.R"], LABEL: "big_mem")
 include { reads_per_cell } from "${localModule}" addParams ( LABEL: "big_mem" )
-include { filter_cells } from "${localModule}" addParams ( LABEL: "big_mem" )
+include { filter_cells } from "${localModule}" addParams ( LABEL: "big_mem_skip" )
 include { cat_reads as cat_reads_A } from "${localModule}" addParams ( EXTRAPARS:"1" )
 include { cat_reads as cat_reads_B } from "${localModule}" addParams ( EXTRAPARS:"2" )
 include { cat_white_barcodes } from "${localModule}" 
@@ -126,6 +126,9 @@ workflow {
     fixed = PICARD_FIXMATE(bams)
     fixed_headers = SAMTOOLS_GET_HEADER(fixed)    
 
+    fixed_headers.view()
+
+     reshape(fixed_headers).view()
     sam_header = join_headers(reshape(fixed_headers))
     data_2_cat = reshape(fixed).join(sam_header)
 
