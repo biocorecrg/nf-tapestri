@@ -105,6 +105,8 @@ cellfinder_scTAMseq.R "-c 0.5"
 ```
 
 ## Running the pipeline
+
+### Old cluster
 IMPORTANT: follow this instruction to the run the pipeline at the CRG cluster
 
 1) Login to general nextflow node 
@@ -128,6 +130,25 @@ We recommend redirecting the `work` folder to a space without backup like `scrat
 ```
 nextflow run main.nf -params-file params.yaml -bg -w //nfs/scratch01/YOURGROUP/work > log.txt
 ```
+
+
+### New cluster
+
+1) Login to general nextflow node 
+
+```
+ssh username@login1.linux.crg.es
+``
+
+Command to run the pipeline:
+
+```
+cd dna_met
+sbatch launch_nf.sh nextflow run main.nf -resume -profile slurm -w YOURSCRATCHFOLDER  -params-file params.yaml -ansi-log false  
+```
+
+We recommend redirecting the `work` folder to a space without backup like `scratch` (you have to ask SIT for having a folder there).
+
 
 ## Output folders
 
