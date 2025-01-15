@@ -138,7 +138,7 @@ nextflow run main.nf -params-file params.yaml -bg -w //nfs/scratch01/YOURGROUP/w
 
 ```
 ssh username@login1.linux.crg.es
-``
+```
 
 Command to run the pipeline:
 
