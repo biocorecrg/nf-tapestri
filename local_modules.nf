@@ -270,7 +270,7 @@ process reformatPairA {
         tuple val(sampleID), path("*_reformat.fastq.gz")
          
         script:
-        def basefile = "${fastqA}".replaceAll('.with.barcodes_reformat.fastq.gz', '') 
+        def basefile = "${fastqA}".replaceAll('.with.barcodes.fastq.gz', '') 
 
         """
         reformat.py --listOfFastqs ${fastqA} --sampleName ${basefile} --outputFolder ./ 
@@ -354,8 +354,10 @@ process extract_white_barcodes {
         script:
         def basefile = "${fastq}".replaceAll('.with.barcodes_reformat.fastq.gz', '') 
 
+        //zcat ${fastq} | grep '@'| cut -d " " -f 2 | sed 's/RG:Z://g'| sed 's/-1//g' | pigz -c -p ${task.cpus} > ${basefile}_MCL_barcodes.txt.gz 
+
         """
-        zcat ${fastq} | grep '@'| cut -d " " -f 2 | sed 's/RG:Z://g'| sed 's/-1//g' | pigz -c -p ${task.cpus} > ${basefile}_MCL_barcodes.txt.gz 
+        zcat ${fastq} | grep '@'| cut -f 2 | sed 's/RG:Z://g'| sed 's/-1//g' | pigz -c -p ${task.cpus} > ${basefile}_MCL_barcodes.txt.gz 
         """
 
 }

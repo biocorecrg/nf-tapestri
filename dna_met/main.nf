@@ -87,6 +87,7 @@ include { REPORT as MULTIQC_REPORT  } from "${moduleFolder}/reporting/multiqc" a
 include { CAT as SAMTOOLS_CAT } from "${moduleFolder}/misc/samtools" addParams(LABEL: "big_cpus")
 include { SORT as SAMTOOLS_SORT } from "${moduleFolder}/misc/samtools" addParams(LABEL: "big_cpus")
 include { STAT as SAMTOOLS_FLAGSTAT } from "${moduleFolder}/misc/samtools" addParams(LABEL: "big_cpus")
+include { FASTQ_PAIRS as SAMTOOLS_GET_UNMAPPED } from "${moduleFolder}/misc/samtools" addParams(GZIP:"YES", EXTRAPARS: " -f 1 -F 2 -T RG")
 
 
 include { map_with_params as bwa_map } from "${moduleFolder}/alignment/bwa" addParams(CONTAINER:"biocorecrg/tapestri:2.0.1", EXTRAPARS:progPars["bwa"], LABEL: "big_cpus")
@@ -113,7 +114,8 @@ workflow {
         num = "${it[1]}".split("\\.")[-3]
         [ "${it[0]}---${num}", [ it[1], it[2] ] ]
     }.set{read_files}
-    
+   
+    read_files.view() 
     index = BWA_INDEX(params.genome)
     outbc = barcode_extract(read_files)
 
@@ -126,9 +128,6 @@ workflow {
     fixed = PICARD_FIXMATE(bams)
     fixed_headers = SAMTOOLS_GET_HEADER(fixed)    
 
-    fixed_headers.view()
-
-     reshape(fixed_headers).view()
     sam_header = join_headers(reshape(fixed_headers))
     data_2_cat = reshape(fixed).join(sam_header)
 
@@ -182,24 +181,47 @@ workflow {
 		filtered_res = filter_cells(data_for_filtering)  
 		filtered_cells = filtered_res.filtered
 		filtered_pdfs = filtered_res.pdfs
-		
-		bc_read_A = outbc.barcode_reads.map{
-			[it[0], it[1]]
-		}
-	
-		bc_read_B = outbc.barcode_reads.map{
-			[it[0], it[2]]
-		}    
-		
+		   
 		if (params.vdj == "YES") {
+
+		// OLD FROM HERE
+		/*
+			bc_read_A = outbc.barcode_reads.map{
+				[it[0], it[1]]
+			}
+	
+			bc_read_B = outbc.barcode_reads.map{
+				[it[0], it[2]]
+			}    
+		
+		*/ 
+		 // NEW HERE
+           
+            unmapped_fastqs = SAMTOOLS_GET_UNMAPPED(outmap)
+
+			bc_read_A = unmapped_fastqs.map{
+				[it[0], it[1]]
+			}
+	
+
+			bc_read_B = unmapped_fastqs.map{
+				[it[0], it[2]]
+			}          
+			
+//		    ref_pairB = reformatPairB(bc_read_B)
+		
+//		    white_BCs = extract_white_barcodes(ref_pairA)
+
+	 // COMMON HERE
+	 	 	
 		    ref_pairA = reformatPairA(bc_read_A)
 		    ref_pairB = reformatPairB(bc_read_B)
 		
 		    white_BCs = extract_white_barcodes(bc_read_A)
-		
-		    reformat_A = cat_reads_A(reshape(ref_pairA))
+ 
+ 		    reformat_A = cat_reads_A(reshape(ref_pairA))
 		    reformat_B = cat_reads_B(reshape(ref_pairB))
-	   
+		    	  
 		    white_BC = cat_white_barcodes(reshape(white_BCs))
 		
 		    ref_trust = channel.fromPath(params.ref_trust, checkIfExists: true)
@@ -209,6 +231,7 @@ workflow {
             trust_res = RUNPE_TRUST4(ref_trust, coord_f, white_BC, reformat_reads)
             clus_res = trust_cluster(trust_res)
             t10x_res = barcoderep_to_10X(trust_res)
+            
 	    } 
     }
  

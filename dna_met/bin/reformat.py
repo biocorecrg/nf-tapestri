@@ -68,7 +68,7 @@ for file in list_files:
         os.makedirs(outdir)
 
     ## The output file will be named by appending "_reformatted" to the input filename just before the extension.
-    outputfile = os.path.join(outdir + "/" + basename.replace(".fastq.gz", "_reformat.fastq.gz"))
+    outputfile = os.path.join(outdir + "/" + sample + "_reformat.fastq.gz")
 
     ## Read input fastq file.
     fq = read_fastq(file)
