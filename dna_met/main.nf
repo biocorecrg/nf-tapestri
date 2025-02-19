@@ -21,9 +21,15 @@ version = '0.1'
 params.help            = false
 params.resume          = false
 
+moduleFolder   = "${projectDir}/../BioNextflow/subworkflows"
+
+include { colorCodes } from local_modules
+include { final_message; notify_slack; colorCodes } from "${moduleFolder}/global_functions.nf"
+def colors = colorCodes()
+
 
 log.info """
-BIOCORE@CRG Tapestri - N F  ~  version ${version}
+${colors.yellow}${colors.bold}====================================================
 
 ╔╗ ┬┌─┐┌─┐┌─┐┬─┐┌─┐╔═╗╦═╗╔═╗  ╔╗╔╔═╗ ╔╦╗┌─┐┌─┐┌─┐┌─┐┌┬┐┬─┐┬  ╔╦╗╔╗╔╔═╗  ╔╦╗┌─┐┌┬┐
 ╠╩╗││ ││  │ │├┬┘├┤ ║  ╠╦╝║ ╦  ║║║╠╣───║ ├─┤├─┘├┤ └─┐ │ ├┬┘│   ║║║║║╠═╣  ║║║├┤  │ 
@@ -61,24 +67,37 @@ BIOCORE@CRG Tapestri - N F  ~  version ${version}
 ⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠉⠛⠶⠤⣤⣄⣀⣀⣀⣀⣀⣀⣀⣀⣤⡼⠷⣤⣀⡀⠈⠉⢉⣉⣭⠾⠋⠀⠀⠀
 ⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠉⠉⠉⠉⠉⠉⠉⠁⠀⠀⠀⠈⠉⠉⠛⠛⠋⠉⠁⠀⠀⠀⠀⠀
 ====================================================
-reads                       : ${params.reads}
-genome                      : ${params.genome}
-panel                       : ${params.panel}
-ampli                       : ${params.ampli}
-cellfinder                  : ${params.cellfinder}
-CpG_unmeth                  : ${params.CpG_unmeth}
-undigested                  : ${params.undigested}
-nreads                      : ${params.nreads}
-vdj                         : ${params.vdj}
-coord_f                     : ${params.coord_f}
-ref_trust                   : ${params.ref_trust}
-email                       : ${params.email}
-output (output folder)      : ${params.output}
+${colors.reset}
+
+${colors.bold}Input${colors.reset}
+----------------------------------------------------${colors.reset}
+${colors.green}reads{colors.reset}                        : ${params.reads}
+${colors.green}genome{colors.reset}                       : ${params.genome}
+${colors.green}panel{colors.reset}                        : ${params.panel}
+
+${colors.bold}ampli${colors.reset} can be '' in case of cellfinder_scTAMseq.R 
+and it will take the 4th column of the panel file ${colors.reset}
+----------------------------------------------------${colors.reset}
+${colors.green}ampli{colors.reset}                        : ${params.ampli}
+
+${colors.green}CpG_unmeth{colors.reset}                   : ${params.CpG_unmeth}
+
+${colors.bold}cellfinder${colors.reset} can be ${colors.bold}cellfinder_scTAMseq.R${colors.reset} or ${colors.bold}cellfinder_MCL_HC.R${colors.reset}
+----------------------------------------------------${colors.reset}
+${colors.green}cellfinder{colors.reset}                   : ${params.cellfinder}
+
+${colors.green}undigested{colors.reset}                   : ${params.undigested}
+${colors.green}nreads{colors.reset}                       : ${params.nreads}
+${colors.green}vdj{colors.reset}                          : ${params.vdj}
+${colors.green}coord_f{colors.reset}                      : ${params.coord_f}
+${colors.green}ref_trust{colors.reset}                    : ${params.ref_trust}
+${colors.green}email{colors.reset}                        : ${params.email}
+${colors.green}hook{colors.reset}                         : ${params.hook}
+${colors.green}output (output folder){colors.reset}       : ${params.output}
 """
 
 if (params.resume) exit 1, "Are you making the classical --resume typo? Be careful!!!! ;)"
 
-moduleFolder   = "${projectDir}/../BioNextflow/subworkflows"
 // INIZIALIZE MULTIQC REPORT
 config_report = file("${projectDir}/config.yaml")
 if( !config_report.exists() ) exit 1, "Missing config.yaml file!"
@@ -93,7 +112,6 @@ outputfolder     = "${params.output}"
 include { getParameters } from "${localModule}"
 progPars = getParameters(tools_opt)
 
-include { final_message; notify_slack } from "${moduleFolder}/global_functions.nf"
 include { barcode_extract } from "${localModule}" addParams(EXTRAPARS:progPars["tapestri-barcode-extract"], LABEL: "big_cpus")
 include { make_target_counts } from "${localModule}" addParams(LABEL: "big_cpus")
 include { make_minus_5panel } from "${localModule}"
@@ -235,14 +253,12 @@ workflow {
 		filtered_cells = filtered_res.filtered
 		filtered_pdfs = filtered_res.pdfs
 		good_bcs = filtered_res.good_bcs
-		good_bcs.view()
 		outmap.map{
 			def sam_raw_ids = it[0].split("---") 
 			[ sam_raw_ids[0], it[0], it[1] ] 
 		}.combine(good_bcs, by: 0).map{
 			[ it[1], it[2], it[3]]
 		}.set{data_to_unmap}
-		data_to_unmap.view()
 		
 		if (params.vdj == "YES") {
 
