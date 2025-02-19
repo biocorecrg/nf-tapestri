@@ -14,4 +14,3 @@ RUN Rscript -e "library('remotes'); install_version('ggplot2', version = '3.5.1'
 
 RUN Rscript -e "install.packages(c('tidyr', 'SeuratObject', 'ggpubr', 'dplyr', 'tidyverse', 'reshape2', 'seurat'), repos='http://cran.us.r-project.org')"
 
-
