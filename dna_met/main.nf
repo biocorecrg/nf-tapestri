@@ -23,7 +23,6 @@ params.resume          = false
 
 moduleFolder   = "${projectDir}/../BioNextflow/subworkflows"
 
-include { colorCodes } from local_modules
 include { final_message; notify_slack; colorCodes } from "${moduleFolder}/global_functions.nf"
 def colors = colorCodes()
 
@@ -84,16 +83,16 @@ ${colors.green}CpG_unmeth{colors.reset}                   : ${params.CpG_unmeth}
 
 ${colors.bold}cellfinder${colors.reset} can be ${colors.bold}cellfinder_scTAMseq.R${colors.reset} or ${colors.bold}cellfinder_MCL_HC.R${colors.reset}
 ----------------------------------------------------${colors.reset}
-${colors.green}cellfinder{colors.reset}                   : ${params.cellfinder}
+${colors.green}cellfinder${colors.reset}                  : ${params.cellfinder}
 
-${colors.green}undigested{colors.reset}                   : ${params.undigested}
-${colors.green}nreads{colors.reset}                       : ${params.nreads}
-${colors.green}vdj{colors.reset}                          : ${params.vdj}
-${colors.green}coord_f{colors.reset}                      : ${params.coord_f}
-${colors.green}ref_trust{colors.reset}                    : ${params.ref_trust}
-${colors.green}email{colors.reset}                        : ${params.email}
-${colors.green}hook{colors.reset}                         : ${params.hook}
-${colors.green}output (output folder){colors.reset}       : ${params.output}
+${colors.green}undigested${colors.reset}                   : ${params.undigested}
+${colors.green}nreads${colors.reset}                       : ${params.nreads}
+${colors.green}vdj${colors.reset}                          : ${params.vdj}
+${colors.green}coord_f${colors.reset}                      : ${params.coord_f}
+${colors.green}ref_trust${colors.reset}                    : ${params.ref_trust}
+${colors.green}email${colors.reset}                        : ${params.email}
+${colors.green}hook${colors.reset}                         : ${params.hook}
+${colors.green}output (output folder)${colors.reset}       : ${params.output}
 """
 
 if (params.resume) exit 1, "Are you making the classical --resume typo? Be careful!!!! ;)"
