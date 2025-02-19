@@ -70,16 +70,16 @@ ${colors.reset}
 
 ${colors.bold}Input${colors.reset}
 ----------------------------------------------------${colors.reset}
-${colors.green}reads{colors.reset}                        : ${params.reads}
-${colors.green}genome{colors.reset}                       : ${params.genome}
-${colors.green}panel{colors.reset}                        : ${params.panel}
+${colors.green}reads${colors.reset}                        : ${params.reads}
+${colors.green}genome${colors.reset}                       : ${params.genome}
+${colors.green}panel${colors.reset}                        : ${params.panel}
 
-${colors.bold}ampli${colors.reset} can be '' in case of cellfinder_scTAMseq.R 
+${colors.bold}ampli$${colors.reset} can be '' in case of cellfinder_scTAMseq.R 
 and it will take the 4th column of the panel file ${colors.reset}
 ----------------------------------------------------${colors.reset}
-${colors.green}ampli{colors.reset}                        : ${params.ampli}
+${colors.green}ampli${colors.reset}                        : ${params.ampli}
 
-${colors.green}CpG_unmeth{colors.reset}                   : ${params.CpG_unmeth}
+${colors.green}CpG_unmeth${colors.reset}                   : ${params.CpG_unmeth}
 
 ${colors.bold}cellfinder${colors.reset} can be ${colors.bold}cellfinder_scTAMseq.R${colors.reset} or ${colors.bold}cellfinder_MCL_HC.R${colors.reset}
 ----------------------------------------------------${colors.reset}
