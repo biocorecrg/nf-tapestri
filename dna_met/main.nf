@@ -67,6 +67,7 @@ panel                       : ${params.panel}
 ampli                       : ${params.ampli}
 cellfinder                  : ${params.cellfinder}
 CpG_unmeth                  : ${params.CpG_unmeth}
+undigested                  : ${params.undigested}
 nreads                      : ${params.nreads}
 vdj                         : ${params.vdj}
 coord_f                     : ${params.coord_f}
@@ -78,7 +79,11 @@ output (output folder)      : ${params.output}
 if (params.resume) exit 1, "Are you making the classical --resume typo? Be careful!!!! ;)"
 
 moduleFolder   = "${projectDir}/../BioNextflow/subworkflows"
-//multiQC_conf   = Channel.fromPath("${projectDir}/config.yaml", checkIfExists: true)
+// INIZIALIZE MULTIQC REPORT
+config_report = file("${projectDir}/config.yaml")
+if( !config_report.exists() ) exit 1, "Missing config.yaml file!"
+logo = file("${projectDir}/logo_dnamet.jpg")
+
 localModule    = "${projectDir}/../local_modules.nf"
 tools_opt      = "${projectDir}/tools_opt.tsv"
 
@@ -110,16 +115,17 @@ include { cat_white_barcodes } from "${localModule}"
 
 include { trust_cluster } from "${localModule}" addParams ( EXTRAPARS:progPars["trust-cluster"] )
 include { barcoderep_to_10X } from "${localModule}" 
-
+include { join_metrics; cat_metrics } from "${localModule}" 
 
 include { INDEX as BWA_INDEX } from "${moduleFolder}/alignment/bwa" addParams(STOREINDEX:params.index, CONTAINER:"biocorecrg/tapestri:2.0.1")
-include { FASTQCP as FASTQC_QC } from "${moduleFolder}/qc/fastqc" 
-include { REPORT as MULTIQC_REPORT  } from "${moduleFolder}/reporting/multiqc" addParams(OUTPUT: "${outputfolder}/report/")
+include { FASTQC_ID as FASTQC_QC } from "${moduleFolder}/qc/fastqc" 
+include { REPORT as MULTIQC_REPORT } from "${moduleFolder}/reporting/multiqc" addParams(EXTRAPARS: "-c ${config_report.getName()}", OUTPUT: "${outputfolder}/report/")
+
 
 include { CAT as SAMTOOLS_CAT } from "${moduleFolder}/misc/samtools" addParams(LABEL: "big_cpus")
 include { SORT as SAMTOOLS_SORT } from "${moduleFolder}/misc/samtools" addParams(LABEL: "big_cpus")
 include { STAT as SAMTOOLS_FLAGSTAT } from "${moduleFolder}/misc/samtools" addParams(LABEL: "big_cpus")
-include { FASTQ_PAIRS as SAMTOOLS_GET_UNMAPPED } from "${moduleFolder}/misc/samtools" addParams(GZIP:"YES", EXTRAPARS: " -f 1 -F 2 -T RG")
+include { FASTQ_PAIRS_ONREADGROUP as SAMTOOLS_GET_UNMAPPED } from "${moduleFolder}/misc/samtools" addParams(GZIP:"YES", EXTRAPARS: " -f 1 -F 2 -T RG")
 
 
 include { map_with_params as bwa_map } from "${moduleFolder}/alignment/bwa" addParams(CONTAINER:"biocorecrg/tapestri:2.0.1", EXTRAPARS:progPars["bwa"], LABEL: "big_cpus")
@@ -138,18 +144,31 @@ Channel.fromPath( params.panel, checkIfExists: true )
 .ifEmpty { error "Cannot find any panel file ${params.panel}" }
 .set { panel_file }    
 
+undigested_par = channel.value(params.undigested)
+
+Channel.from( config_report, logo ).set{data_for_reporting}
+
 
 workflow {
-    data_for_reporting = FASTQC_QC(ori_read_files)
+	ori_read_files.map{
+		[it[0], [it[1], it[2]] ]
+	}.set{read_to_fastqc}
+	fastqc_res = FASTQC_QC(read_to_fastqc).map{it[1]}.flatten()
+	
+    data_for_reporting = data_for_reporting.mix(fastqc_res)
     
     ori_read_files.splitFastq( by: params.nreads, pe: true, file: true, compress:true ).map{
         num = "${it[1]}".split("\\.")[-3]
         [ "${it[0]}---${num}", [ it[1], it[2] ] ]
     }.set{read_files}
    
-    read_files.view() 
     index = BWA_INDEX(params.genome)
     outbc = barcode_extract(read_files)
+
+	// collectStats
+	joint_metrics = join_metrics(reshape(outbc.barcode_metrics))
+	
+	all_joint_metrics = cat_metrics(joint_metrics.map{it[1]}.collect())
 
     outbc.barcode_reads.join(outbc.sam_header).map{
         [ it[0], [ it[1], it[2] ], "-H ${it[3]}" ]
@@ -169,6 +188,8 @@ workflow {
 
     m5panel = make_minus_5panel(panel_file)
     index_reads = sorted_jaln.join(indexes) 
+        
+    data_for_reporting = data_for_reporting.mix(all_joint_metrics)
     
     //aln_stats = SAMTOOLS_FLAGSTAT(sorted_jaln)
 
@@ -208,12 +229,21 @@ workflow {
         .ifEmpty { error "Cannot find any CpG_unmeth file ${params.CpG_unmeth}" }
         .set { CpG_unmeth }
 
-		data_for_filtering = distrib.join(doublets).combine(ampli_file).combine(CpG_unmeth)
+		data_for_filtering = distrib.join(doublets).combine(ampli_file).combine(CpG_unmeth).combine(undigested_par)
 	
 		filtered_res = filter_cells(data_for_filtering)  
 		filtered_cells = filtered_res.filtered
 		filtered_pdfs = filtered_res.pdfs
-		   
+		good_bcs = filtered_res.good_bcs
+		good_bcs.view()
+		outmap.map{
+			def sam_raw_ids = it[0].split("---") 
+			[ sam_raw_ids[0], it[0], it[1] ] 
+		}.combine(good_bcs, by: 0).map{
+			[ it[1], it[2], it[3]]
+		}.set{data_to_unmap}
+		data_to_unmap.view()
+		
 		if (params.vdj == "YES") {
 
 		// OLD FROM HERE
@@ -229,7 +259,7 @@ workflow {
 		*/ 
 		 // NEW HERE
            
-            unmapped_fastqs = SAMTOOLS_GET_UNMAPPED(outmap)
+            unmapped_fastqs = SAMTOOLS_GET_UNMAPPED(data_to_unmap)
 
 			bc_read_A = unmapped_fastqs.map{
 				[it[0], it[1]]

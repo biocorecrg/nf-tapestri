@@ -53,6 +53,27 @@ process barcode_extract {
 
 }
 
+process join_metrics {
+
+	//publishDir outputBarcode, mode: 'copy'
+	container 'biocorecrg/tapestri:2.0.1'
+    label (params.LABEL)
+	tag("${id}")
+
+	input:
+	tuple val(id), path(json_files)
+	
+	output:
+	tuple val(id), path("${id}_bc_metrics.txt")
+	
+	script:
+	def json_list = json_files.join(" ")
+	"""
+	join_metrics.py -jsl ${json_list} -of ${id}
+	"""	
+	
+}
+
 process make_minus_5panel {
 	//publishDir outputBarcode, mode: 'copy'
 	container 'biocorecrg/tapestri:2.0.1'
@@ -239,24 +260,44 @@ process filter_cells {
         tag("${sampleID}")
 
         input:
-        tuple val(sampleID), path(barcode_distrib), path(doublets), path(amplifile), path(CpG_unmeth) 
+        tuple val(sampleID), path(barcode_distrib), path(doublets), path(amplifile), path(CpG_unmeth), val(undigested) 
 
         output:
         tuple val(sampleID), path("${sampleID}.barcode.cell.distribution_filtered.tsv"), emit: filtered
+        tuple val(sampleID), path("${sampleID}.good.barcodes.tsv"), emit: good_bcs
         tuple val(sampleID), path("*.pdf"), emit: pdfs
  
         script:
         """
-             create.object.QC.MB.pipeline.R ${sampleID} \
+             Filter_cells_undigested_allowed.R ${sampleID} \
              ${barcode_distrib} \
              ${doublets} \
              ./ \
              ${amplifile} \
-             ${CpG_unmeth} 
+             ${CpG_unmeth} \
+             ${undigested} 
         """
 
 }
 
+process cat_metrics {
+	    container 'biocorecrg/tapestri:2.0.1'
+
+        label (params.LABEL)
+
+        input:
+        path(metrics)
+
+        output:
+        path("all_metrics_mqc.txt")
+
+        script:
+        def met_files = metrics.join(" ")
+        """
+		cat_metrics.py -tsl ${met_files} -of all_metrics_mqc.txt
+        """
+
+}
 process reformatPairA {
 
     container 'quay.io/biocontainers/biopython:1.68--py35_0'

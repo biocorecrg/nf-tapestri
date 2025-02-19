@@ -1,0 +1,20 @@
+title: "nf-tapestri DNA met - pipeline"
+subtitle: ""
+intro_text: False
+
+report_header_info:
+    - Please cite: "NOT YET"
+
+custom_logo: 'logo_dnamet.jpg'
+custom_logo_url: 'https://github.com/biocorecrg/nf-tapestri'
+custom_logo_title: 'nf-tapestri'
+
+extra_fn_clean_trim:
+   - '_QC'
+   - '.count'
+   - '-report'
+
+top_modules:
+ - fastqc:
+        name: 'FastQC'
+        info: 'This section of the report shows FastQC results on raw reads.'
