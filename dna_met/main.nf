@@ -74,7 +74,7 @@ ${colors.green}reads${colors.reset}                        : ${params.reads}
 ${colors.green}genome${colors.reset}                       : ${params.genome}
 ${colors.green}panel${colors.reset}                        : ${params.panel}
 
-${colors.bold}ampli$${colors.reset} can be '' in case of cellfinder_scTAMseq.R 
+${colors.bold}ampli${colors.reset} can be '' in case of cellfinder_scTAMseq.R 
 and it will take the 4th column of the panel file ${colors.reset}
 ----------------------------------------------------${colors.reset}
 ${colors.green}ampli${colors.reset}                        : ${params.ampli}
