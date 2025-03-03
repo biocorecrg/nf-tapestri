@@ -161,7 +161,11 @@ Channel.fromPath( params.panel, checkIfExists: true )
 .ifEmpty { error "Cannot find any panel file ${params.panel}" }
 .set { panel_file }    
 
-undigested_par = channel.value(params.undigested)
+def undigested_par = channel.value("NO")
+if (params.undigested.toUpper()) == "YES" {
+	undigested_par = channel.value("YES")
+}
+ 
 
 Channel.from( config_report, logo ).set{data_for_reporting}
 
