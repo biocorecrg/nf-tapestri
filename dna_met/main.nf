@@ -163,8 +163,9 @@ Channel.fromPath( params.panel, checkIfExists: true )
 .set { panel_file }    
 
 def undigested_par = channel.value("YES")
-if (params.undigested.toUpper() == "NO") {
-	undigested_par = channel.value("NO")
+
+if (params.undigested && params.undigested.toUpperCase() == "NO") {
+    undigested_par = channel.value("NO")
 }
  
 
