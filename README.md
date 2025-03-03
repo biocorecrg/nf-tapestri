@@ -1,6 +1,11 @@
 # nf-tapestri
 Nextflow pipeline to generate scTAM-seq output files.
 
+<p align="center">
+  <img src="dna_met/logo_dnamet.jpg" alt="SALT LOGO" width="500"/>
+</p>
+
+
 nf-tapestri involves three pipelines: DNAmet, protein and somatic mutations calling pipelines. 
 DNAmet and protein pipelines can run independently, while somatic mutations pipeline depends on outfiles ganerates by the other two pipelines.
 
