@@ -161,9 +161,9 @@ Channel.fromPath( params.panel, checkIfExists: true )
 .ifEmpty { error "Cannot find any panel file ${params.panel}" }
 .set { panel_file }    
 
-def undigested_par = channel.value("NO")
-if (params.undigested.toUpper()) == "YES" {
-	undigested_par = channel.value("YES")
+def undigested_par = channel.value("YES")
+if (params.undigested.toUpper()) == "NO" {
+	undigested_par = channel.value("NO")
 }
  
 
