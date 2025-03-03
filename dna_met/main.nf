@@ -96,6 +96,7 @@ ${colors.green}output (output folder)${colors.reset}       : ${params.output}
 """
 
 if (params.resume) exit 1, "Are you making the classical --resume typo? Be careful!!!! ;)"
+if (params.help) exit 1
 
 // INIZIALIZE MULTIQC REPORT
 config_report = file("${projectDir}/config.yaml")
@@ -162,7 +163,7 @@ Channel.fromPath( params.panel, checkIfExists: true )
 .set { panel_file }    
 
 def undigested_par = channel.value("YES")
-if (params.undigested.toUpper()) == "NO" {
+if (params.undigested.toUpper() == "NO") {
 	undigested_par = channel.value("NO")
 }
  
