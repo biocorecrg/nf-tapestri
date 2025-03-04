@@ -114,7 +114,7 @@ process make_target_counts {
 
 process join_headers {
 
-    container 'biocorecrg/doubletdetection:0.1'
+    container 'biocorecrg/tapestri:2.0.1'
     label (params.LABEL)
  	tag("${sampleID}")
 	
@@ -126,9 +126,9 @@ process join_headers {
 
 	script:
 	"""
-		grep "@HD" headers_1 > header.sam 
-		grep "@SQ" headers_1 >> header.sam 
-		grep "@RG" headers_* --no-filename | huniq  >> header.sam 
+		samtools view -h headers_1 | grep "@HD" headers_1 > header.sam 
+		samtools view -h headers_1 | grep "@SQ" headers_1 >> header.sam 
+		for i in headers_*; do samtools view -h \$i | grep "@RG" --no-filename; done | huniq  >> header.sam 
  	"""
 
 
