@@ -1,4 +1,4 @@
-# This will do biocorecrg/doubletdetection:0.1
+# This will do biocorecrg/doubletdetection:0.2
 FROM python:3.7
 
 # File Author / Maintainer
@@ -12,3 +12,7 @@ RUN pip3 install --upgrade setuptools wheel
 RUN pip3 install leidenalg
 RUN pip3 install doubletdetection 
 #pandas argparse
+
+#Install samtools
+RUN wget https://github.com/samtools/samtools/releases/download/1.21/samtools-1.21.tar.bz2
+RUN cd samtools-1.21; make && make install
