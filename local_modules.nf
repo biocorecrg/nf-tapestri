@@ -468,16 +468,24 @@ process publishRes() {
 		if ls *.pdf 1> /dev/null 2>&1; then
     		mv *.pdf "${sampleID}/plots"
 		fi
+		
 		mv *.bam* ./${sampleID}/intermediate
 		mv *_stats.txt ./${sampleID}/qc_log
 		mv *_metadata.csv ./${sampleID}/qc_log
 		mv *.png ./${sampleID}/qc_log
 		mv *.txt ./${sampleID}/intermediate
 		mv *.tsv ./${sampleID}/output
-		mv *_b.csv ${sampleID}/trust4
-		mv *_t.csv ${sampleID}/trust4
+		if ls *_b.csv 1> /dev/null 2>&1; then
+			mv *_b.csv ${sampleID}/trust4
+		fi
+		if ls *_t.csv 1> /dev/null 2>&1; then
+			mv *_t.csv ${sampleID}/trust4
+		fi
+		
+		if ls *.csv 1> /dev/null 2>&1; then
+			mv *.csv ./${sampleID}/output
+		fi
 
-		mv *.csv ./${sampleID}/output
 		for i in ${sampleID}/intermediate/*.txt; do cat \$i | gzip -c > ${sampleID}/intermediate/`basename \$i`.gz; done
 		mv *_clones.out ${sampleID}/trust_cluster
 		rm ${sampleID}/intermediate/*.txt
