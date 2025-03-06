@@ -487,7 +487,11 @@ process publishRes() {
 		fi
 
 		for i in ${sampleID}/intermediate/*.txt; do cat \$i | gzip -c > ${sampleID}/intermediate/`basename \$i`.gz; done
-		mv *_clones.out ${sampleID}/trust_cluster
+
+		if ls *_clones.out 1> /dev/null 2>&1; then
+			mv *_clones.out ${sampleID}/trust_cluster
+		fi
+				
 		rm ${sampleID}/intermediate/*.txt
 		if compgen -G "${sampleID}_*" > /dev/null; then
 			mv ${sampleID}_* ${sampleID}/trust4
