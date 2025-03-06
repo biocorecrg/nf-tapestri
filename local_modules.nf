@@ -465,7 +465,9 @@ process publishRes() {
 		mkdir ${sampleID}/plots
 		mkdir ${sampleID}/trust4
 		mkdir ${sampleID}/trust_cluster
-		mv *.pdf ${sampleID}/plots
+		if ls *.pdf 1> /dev/null 2>&1; then
+    		mv *.pdf "${sampleID}/plots"
+		fi
 		mv *.bam* ./${sampleID}/intermediate
 		mv *_stats.txt ./${sampleID}/qc_log
 		mv *_metadata.csv ./${sampleID}/qc_log
