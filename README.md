@@ -89,6 +89,7 @@ panel: "${projectDir}/anno/panel_info.bed" (MB output)
 ampli: ""
 #cellfinder can be cellfinder_scTAMseq.R or cellfinder_MCL_HC.R 
 cellfinder: "cellfinder_scTAMseq.R"
+undigested: "NO"
 CpG_unmeth: "${projectDir}/anno/CpG.always.unmeth.B.extended.panel.csv"  ## always unmet amplicons list in .csv format
 nreads: 20000000
 vdj: "YES" (whether to run VDJ pipeline)
