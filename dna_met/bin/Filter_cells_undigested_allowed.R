@@ -8,7 +8,7 @@ doublets            = args[3] # path and file name doblets
 path                = args[4] # path to save the results
 NonHhaI             = args[5] # path and file name control amplicons, csv with amplicons names
 CpG.always.unmeth.B = args[6] # path and file name always digest control amplicons, csv with amplicons names
-undigested          = args[7] # New argument: "YES", "yes", "Yes" or "NO"
+undigested          = args[7] # New argument: "YES", "yes", "Yes" or "NO, No, no"
 
 # Extract filename prefix (before first dot)
 name    = unlist(strsplit(basename(file), "\\."))[1]
@@ -63,7 +63,7 @@ NonHhaI.cutoff = as.numeric(0.75 * length(NonHhaI))
 undigested <- tolower(undigested)
 
 # Apply different filtering rules based on `undigested`
-if (undigested == "yes") {
+if (undigested == "no") {
   
   # Read control amplicons
   CpG.unmeth <- read.csv(CpG.always.unmeth.B, header = FALSE)[,1]
@@ -128,9 +128,9 @@ tryCatch({
       theme_classic() + ggtitle("Distribution doublet score")
   )
   
-  # Add CpG.always.unmeth.B plot **only if undigested == "yes"**
+  # Add CpG.always.unmeth.B plot **only if undigested == "no"**
   
-  if (undigested == "yes") {
+  if (undigested == "no") {
     plot_list <- c(plot_list, list(
       ggplot(seurat.subset@meta.data, aes(x = CpG.unmeth)) +
         geom_histogram(bins = 100, fill = "#E2CBF7") +
