@@ -10,7 +10,7 @@ CpG_unmeth: "${projectDir}/anno/CpG.always.unmeth.B.extended.panel.csv"
 # cellfinder can be cellfinder_scTAMseq.R / cellfinder_MCL_HC.R 
 cellfinder: "cellfinder_scTAMseq.R" 
 undigested: "YES"
-nreads: 100000
+nreads: 50000000
 vdj: "YES"
 coord_f: "${projectDir}/anno/hg38_bcrtcr.f"
 ref_trust: "/users/rbeekman/abianchi/test_pipeline/panel_info/dna_pipeline/human_IMGT+C.fa.gz"
