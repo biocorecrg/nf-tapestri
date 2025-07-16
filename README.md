@@ -107,6 +107,9 @@ nreads parameter:
 - 1000M files or bigger, we recommend setting nreads to 50M reads.
 - Smaller files, ~100M reads, 20M reads could be more convenient.   
 
+## undigested 
+undigested = Yes or o NO, new . The filtering is different whether the sample is undigested or digested.
+
 
 The command line of the single tools can be tweaked using the file `tools_opt.tsv`. This is the one currently:
 
