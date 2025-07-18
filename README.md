@@ -171,6 +171,15 @@ sbatch launch_nf.sh nextflow run main.nf -resume -profile slurm -w YOURSCRATCHFO
 
 We recommend redirecting the `work` folder to a space without backup, like `scratch` (you have to ask SIT for permission to have a folder there).
 
+### BSC
+
+Command to run the pipeline:
+
+```
+cd dna_met
+sbatch launch_bsc.sh nextflow run main.nf -resume -profile bsc -params-file params.yaml -ansi-log false  
+```
+
 
 # Protein pipeline
 This pipeline generates an output file listing the number of reads per antibody per cell.
