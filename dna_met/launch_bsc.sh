@@ -17,7 +17,11 @@ _term() {
 }
  
 trap _term TERM
- 
+
+# Prevent Nextflow from trying to go online
+export NXF_OFFLINE=true
+export NXF_HOME=$HOME/.nextflow
+
 "$@" & pid=$!
  
 echo "Waiting for ${pid}"
